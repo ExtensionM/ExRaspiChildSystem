@@ -99,6 +99,10 @@ var RaspChild;
             *これがtrueになるまでUDPの送信を続ける
             */
             this.serverFound = false;
+            //関数が登録されるたびに増える番号
+            this.funcNo = 0;
+            //登録された関数
+            this.registedFunc = {};
             console.log("Reading Keys...");
             this.clientType = clientType;
             try {
@@ -211,6 +215,46 @@ var RaspChild;
         Client.init = function () {
         };
         /**
+        *使用できる関数を登録する
+        *@param {Function} func 呼び出される関数
+        *@param {funcDef} def 関数に関する情報
+        *@param {string} name 関数名(重複不可)
+        */
+        Client.prototype.regist = function (func, def, name) {
+            if (name == undefined) {
+                if (func.name == undefined || func.name == "") {
+                    name = "function" + this.funcNo;
+                    this.funcNo++;
+                }
+            }
+            if (name in this.registedFunc) {
+                throw new Error("Already Exist '" + name + "'");
+            }
+            def.name = name;
+            var reg = def;
+            reg.func = func;
+            //登録
+            this.registedFunc[name] = reg;
+            var val;
+            val = { function: def.name, state: def.status, type: funcmsgType.add, value: def };
+            if (this.serverFound) {
+                //サーバと接続済み
+                var msg;
+                msg = { id: this.udpMessage.guid, name: this.udpMessage.name, type: msgType.function, dest: destination.server, value: [val] };
+                this.sendMessage(msg);
+            }
+            else {
+                if (this.registerBuff == undefined) {
+                    //バッファが存在しない
+                    this.registerBuff = { id: this.udpMessage.guid, name: this.udpMessage.name, type: msgType.function, dest: destination.server, value: [val] };
+                }
+                else {
+                    //バッファが既に存在
+                    this.registerBuff.value.push(val);
+                }
+            }
+        };
+        /**
         *検索、実行
         */
         Client.prototype.run = function () {
@@ -223,23 +267,46 @@ var RaspChild;
         *@param {Buffer} msg 受信したバイナリ
         */
         Client.prototype.tcpReceived = function (msg) {
+            var that = this.this;
+            var txt = msg.toString("utf8", 0, msg.length);
+            var obj = JSON.parse(txt);
+            switch (obj.type) {
+                case msgType.callFromServer:
+                    //親機からの関数呼び出し命令
+                    var cMsg = obj;
+                    if (cMsg.value.function != undefined) {
+                        that.callFunction(cMsg.value.function, cMsg.value.args);
+                    }
+                    break;
+            }
+            /*
             try {
                 var txt = msg.toString("utf8", 0, msg.length);
                 try {
                     var obj = JSON.parse(txt);
                     console.log(txt);
-                    var that = this.this;
+                    var that: Client = (<any>this).this;
                     if (that.onmessage != undefined) {
                         that.onmessage(that, obj);
                     }
-                }
-                catch (ex) {
+                } catch (ex) {
                     console.log('Parse Error :' + txt);
                 }
-            }
-            catch (e) {
+            } catch (e) {
                 console.log('Error Message' + e);
             }
+            */
+        };
+        /**
+        *@param {string} name 関数名
+        *@param {any[]} args 引数一覧
+        */
+        Client.prototype.callFunction = function (name, args) {
+            if (name in this.registedFunc) {
+                //関数が存在するならば
+                this.registedFunc[name].func.apply(this, args);
+            }
+            return false;
         };
         /**
         *メッセージを送信します
@@ -292,6 +359,10 @@ var RaspChild;
             that.socket.on('close', that.closed);
             that.serverFound = true;
             console.log("SSL Connected");
+            if (this.registerBuff != undefined) {
+                this.sendMessage(this.registerBuff);
+                this.registerBuff = undefined;
+            }
         };
         /**
         *UDPのポートを開ける
@@ -384,6 +455,7 @@ var RaspChild;
         msgType[msgType["function"] = "function"] = "function";
         msgType[msgType["message"] = "message"] = "message";
         msgType[msgType["call"] = "call"] = "call";
+        msgType[msgType["callFromServer"] = "function"] = "callFromServer";
     })(msgType || (msgType = {}));
     ;
     /**

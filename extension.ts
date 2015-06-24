@@ -1,4 +1,4 @@
-﻿/// <reference path="Scripts/typings/node/node.d.ts" />
+/// <reference path="Scripts/typings/node/node.d.ts" />
 //var fs = require('fs');
 //var ursa = require('ursa');
 //var dgram = require('dgram');
@@ -29,7 +29,7 @@ export module RaspChild {
     */
     export class GUID {
 
-        bytes: number[];
+        private bytes: number[];
 
         /**
         *dataを設定して初期化する
@@ -198,6 +198,13 @@ export module RaspChild {
         */
         private serverFound: boolean = false;
 
+        //関数が登録されるたびに増える番号
+        private funcNo: number = 0;
+        //登録された関数
+        private registedFunc: { [key: string]: registedFunc; } = {};
+
+        private registerBuff: functionMessages;
+
         /**
         *SSLのメッセージを受けた際呼ばれる関数
         *@param {Client} client このインスタンス
@@ -250,6 +257,50 @@ export module RaspChild {
 
             this.udp = dgram.createSocket("udp4");
         }
+
+        /**
+        *使用できる関数を登録する
+        *@param {Function} func 呼び出される関数
+        *@param {funcDef} def 関数に関する情報
+        *@param {string} name 関数名(重複不可)
+        */
+        public regist(func: Function, def: funcDef, name?: string) {
+            if (name == undefined) {
+                if ((<any>func).name == undefined || (<any>func).name == "") {
+                    name = "function" + this.funcNo;
+                    this.funcNo++;
+                }
+            }
+            if (name in this.registedFunc) {
+                //関数名が被ってる→エラー
+                throw new Error("Already Exist '" + name + "'");
+            }
+            def.name = name;
+            var reg: registedFunc = <any> def;
+            reg.func = func;
+            //登録
+            this.registedFunc[name] = reg;
+
+            var val: functionMessage;
+            val = { function: def.name, state: def.status, type: funcmsgType.add, value: def }
+
+            if (this.serverFound) {
+                //サーバと接続済み
+                var msg: functionMessages;
+                msg = { id: this.udpMessage.guid, name: this.udpMessage.name, type: msgType.function, dest: destination.server, value: [val] };
+                this.sendMessage(msg);
+            } else {
+                if (this.registerBuff == undefined) {
+                    //バッファが存在しない
+                    this.registerBuff = { id: this.udpMessage.guid, name: this.udpMessage.name, type: msgType.function, dest: destination.server, value: [val] };
+                } else {
+                    //バッファが既に存在
+                    this.registerBuff.value.push(val);
+                }
+            }
+
+        }
+
         /**
         *検索、実行
         */
@@ -263,6 +314,20 @@ export module RaspChild {
         *@param {Buffer} msg 受信したバイナリ
         */
         private tcpReceived(msg: Buffer): void {
+            var that: Client = (<any>this).this;
+            var txt = msg.toString("utf8", 0, msg.length);
+            var obj: message = JSON.parse(txt);
+            switch (obj.type) {
+                case msgType.callFromServer:
+                    //親機からの関数呼び出し命令
+                    var cMsg: callMessage = <any>obj;
+                    if (cMsg.value.function != undefined) {
+                        that.callFunction(cMsg.value.function, cMsg.value.args);
+                    }
+                    break;
+            }
+
+            /*
             try {
                 var txt = msg.toString("utf8", 0, msg.length);
                 try {
@@ -278,20 +343,33 @@ export module RaspChild {
             } catch (e) {
                 console.log('Error Message' + e);
             }
+            */
+        }
+
+        /**
+        *@param {string} name 関数名
+        *@param {any[]} args 引数一覧
+        */
+        private callFunction(name: string, args: any[]): boolean {
+            if (name in this.registedFunc) {
+                //関数が存在するならば
+                this.registedFunc[name].func.apply(this, args);
+            }
+            return false;
         }
 
         /**
         *メッセージを送信します
         *@param {any} msg 送信するオブジェクト(JSONに変換されます)
         */
-        public sendMessage(msg: any) {
+        private sendMessage(msg: any) {
             this.sendText(JSON.stringify(msg));
         }
         /**
         *テキストのメッセージを送信します
         *@param {string} text 送信するテキスト(JSONの形式に従ってください)
         */
-        public sendText(text: string) {
+        private sendText(text: string) {
             this.socket.write(new Buffer(text, "utf8"));
         }
 
@@ -335,6 +413,10 @@ export module RaspChild {
             that.socket.on('close', that.closed);
             that.serverFound = true;
             console.log("SSL Connected");
+            if (this.registerBuff != undefined) {
+                this.sendMessage(this.registerBuff);
+                this.registerBuff = undefined;
+            }
         }
 
         /**
@@ -430,7 +512,8 @@ export module RaspChild {
         result = <any>"result",
         function = <any>"function",
         message = <any>"message",
-        call = <any>"call"
+        call = <any>"call",
+        callFromServer = <any>"function"
     };
     /**
     *送信先
@@ -441,9 +524,9 @@ export module RaspChild {
         both = <any>"both"
     }
     /**
-    *クライアントからのメッセージ
+    *メッセージ
     */
-    interface cMessage {
+    interface message {
         //ファームウェア名
         name: string;
         //GUID
@@ -459,19 +542,22 @@ export module RaspChild {
     /**
     *関数に関するメッセージ(集合体)
     */
-    interface functionMessages extends cMessage{
-        name: string;
-        id: GUID;
-        dest: destination;
-        type: msgType;
+    interface functionMessages extends message {
+        //種類に応じた値
         value: functionMessage[];
+    }
+
+    //関数呼び出しに関する情報
+    interface callMessage extends message {
+        //呼び出しの情報
+        value: call;
     }
 
     /**
     *関数メッセージの内容の種類
     */
-    enum funcmsgType{
-        add=<any>"add",
+    enum funcmsgType {
+        add = <any>"add",
         remove = <any>"remove",
         state = <any>"state"
     }
@@ -479,10 +565,14 @@ export module RaspChild {
     /**
     *関数に関するメッセージ
     */
-    interface functionMessage{
+    interface functionMessage {
+        //メッセージのタイプ
         type: funcmsgType;
+        //関数名
         function: string;
+        //呼び出しの可否
         state: boolean;
+        //関数の情報
         value: funcDef;
     }
 
@@ -508,6 +598,12 @@ export module RaspChild {
         result: argument;
     }
 
+    //登録された関数データ
+    interface registedFunc extends funcDef {
+        //呼び出される関数
+        func: Function;
+    }
+
     //引数の型
     enum argType {
         boolean = <any>"boolean",
@@ -528,10 +624,16 @@ export module RaspChild {
         //説明
         desc: string;
         //型名
-        type:argType
+        type: argType
     }
 
-
+    //関数呼び出し時の値
+    interface call {
+        //関数の名前(固有)
+        function: string;
+        //引数
+        args: any[];
+    }
 
     Client.init();
 
