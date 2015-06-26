@@ -281,7 +281,7 @@ export module Child {
             this.registedFunc[name] = reg;
 
             var val: functionMessage;
-            val = { function: name, state: def.status, type: funcmsgType.add, value: def }
+            val = { function: name, type: funcmsgType.add, value: def }
 
             if (this.serverFound) {
                 //サーバと接続済み
@@ -569,8 +569,8 @@ export module Child {
         type: funcmsgType;
         //関数名
         function: string;
-        //呼び出しの可否
-        state: boolean;
+        //利用可能か(type==stateの場合のみ)
+        state?: boolean;
         //関数の情報
         value: funcDef;
     }

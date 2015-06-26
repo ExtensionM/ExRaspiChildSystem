@@ -235,7 +235,7 @@ var Child;
             //登録
             this.registedFunc[name] = reg;
             var val;
-            val = { function: name, state: def.status, type: funcmsgType.add, value: def };
+            val = { function: name, type: funcmsgType.add, value: def };
             if (this.serverFound) {
                 //サーバと接続済み
                 var msg;
