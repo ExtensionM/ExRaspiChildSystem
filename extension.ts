@@ -8,7 +8,7 @@ import dgram = require('dgram');
 import tls = require('tls');
 import net = require('net');
 
-export module RaspChild {
+export module Child {
 
     /**
     *設定ファイルに保存する内容
@@ -275,14 +275,13 @@ export module RaspChild {
                 //関数名が被ってる→エラー
                 throw new Error("Already Exist '" + name + "'");
             }
-            def.name = name;
             var reg: registedFunc = <any> def;
             reg.func = func;
             //登録
             this.registedFunc[name] = reg;
 
             var val: functionMessage;
-            val = { function: def.name, state: def.status, type: funcmsgType.add, value: def }
+            val = { function: name, state: def.status, type: funcmsgType.add, value: def }
 
             if (this.serverFound) {
                 //サーバと接続済み
@@ -318,7 +317,7 @@ export module RaspChild {
             var txt = msg.toString("utf8", 0, msg.length);
             var obj: message = JSON.parse(txt);
             switch (obj.type) {
-                case msgType.callFromServer:
+                case msgType.function:
                     //親機からの関数呼び出し命令
                     var cMsg: callMessage = <any>obj;
                     if (cMsg.value.function != undefined) {
@@ -413,9 +412,9 @@ export module RaspChild {
             that.socket.on('close', that.closed);
             that.serverFound = true;
             console.log("SSL Connected");
-            if (this.registerBuff != undefined) {
-                this.sendMessage(this.registerBuff);
-                this.registerBuff = undefined;
+            if (that.registerBuff != undefined) {
+                that.sendMessage(that.registerBuff);
+                that.registerBuff = undefined;
             }
         }
 
@@ -466,7 +465,8 @@ export module RaspChild {
         *SSLのポートを開ける
         */
         private openSslPort(): void {
-            this.ssl = tls.createServer({ cert: this.cert, key: fs.readFileSync("../certs/private.pem") });
+            var k = this.privateKey.toPrivatePem();
+            this.ssl = tls.createServer({ cert: this.cert, key:k });
             this.ssl.maxConnections = 1;
             this.ssl.listen(this.tcpPort);
             (<any>(this.ssl)).this = this;
@@ -508,17 +508,16 @@ export module RaspChild {
     /**
     *子機からのメッセージのタイプ
     */
-    enum msgType {
+    export enum msgType {
         result = <any>"result",
         function = <any>"function",
         message = <any>"message",
-        call = <any>"call",
-        callFromServer = <any>"function"
+        call = <any>"call"
     };
     /**
     *送信先
     */
-    enum destination {
+    export enum destination {
         server = <any>"server",
         raspi = <any>"raspi",
         both = <any>"both"
@@ -556,7 +555,7 @@ export module RaspChild {
     /**
     *関数メッセージの内容の種類
     */
-    enum funcmsgType {
+    export enum funcmsgType {
         add = <any>"add",
         remove = <any>"remove",
         state = <any>"state"
@@ -605,9 +604,10 @@ export module RaspChild {
     }
 
     //引数の型
-    enum argType {
+    export enum argType {
         boolean = <any>"boolean",
         number = <any>"number",
+        string = <any>"string",
         int = <any>"int",
         array = <any>"[]",
         img = <any>"img",

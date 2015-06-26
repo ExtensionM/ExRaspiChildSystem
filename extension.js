@@ -6,8 +6,8 @@ var fs = require('fs');
 var ursa = require('ursa');
 var dgram = require('dgram');
 var tls = require('tls');
-var RaspChild;
-(function (RaspChild) {
+var Child;
+(function (Child) {
     /**
     *GUIDの値
     */
@@ -79,7 +79,7 @@ var RaspChild;
         };
         return GUID;
     })();
-    RaspChild.GUID = GUID;
+    Child.GUID = GUID;
     /**
     *子機
     */
@@ -230,13 +230,12 @@ var RaspChild;
             if (name in this.registedFunc) {
                 throw new Error("Already Exist '" + name + "'");
             }
-            def.name = name;
             var reg = def;
             reg.func = func;
             //登録
             this.registedFunc[name] = reg;
             var val;
-            val = { function: def.name, state: def.status, type: funcmsgType.add, value: def };
+            val = { function: name, state: def.status, type: funcmsgType.add, value: def };
             if (this.serverFound) {
                 //サーバと接続済み
                 var msg;
@@ -271,7 +270,7 @@ var RaspChild;
             var txt = msg.toString("utf8", 0, msg.length);
             var obj = JSON.parse(txt);
             switch (obj.type) {
-                case msgType.callFromServer:
+                case msgType.function:
                     //親機からの関数呼び出し命令
                     var cMsg = obj;
                     if (cMsg.value.function != undefined) {
@@ -359,9 +358,9 @@ var RaspChild;
             that.socket.on('close', that.closed);
             that.serverFound = true;
             console.log("SSL Connected");
-            if (this.registerBuff != undefined) {
-                this.sendMessage(this.registerBuff);
-                this.registerBuff = undefined;
+            if (that.registerBuff != undefined) {
+                that.sendMessage(that.registerBuff);
+                that.registerBuff = undefined;
             }
         };
         /**
@@ -409,7 +408,8 @@ var RaspChild;
         *SSLのポートを開ける
         */
         Client.prototype.openSslPort = function () {
-            this.ssl = tls.createServer({ cert: this.cert, key: fs.readFileSync("../certs/private.pem") });
+            var k = this.privateKey.toPrivatePem();
+            this.ssl = tls.createServer({ cert: this.cert, key: k });
             this.ssl.maxConnections = 1;
             this.ssl.listen(this.tcpPort);
             (this.ssl).this = this;
@@ -445,47 +445,47 @@ var RaspChild;
         };
         return Client;
     })();
-    RaspChild.Client = Client;
+    Child.Client = Client;
     /**
     *子機からのメッセージのタイプ
     */
-    var msgType;
     (function (msgType) {
         msgType[msgType["result"] = "result"] = "result";
         msgType[msgType["function"] = "function"] = "function";
         msgType[msgType["message"] = "message"] = "message";
         msgType[msgType["call"] = "call"] = "call";
-        msgType[msgType["callFromServer"] = "function"] = "callFromServer";
-    })(msgType || (msgType = {}));
+    })(Child.msgType || (Child.msgType = {}));
+    var msgType = Child.msgType;
     ;
     /**
     *送信先
     */
-    var destination;
     (function (destination) {
         destination[destination["server"] = "server"] = "server";
         destination[destination["raspi"] = "raspi"] = "raspi";
         destination[destination["both"] = "both"] = "both";
-    })(destination || (destination = {}));
+    })(Child.destination || (Child.destination = {}));
+    var destination = Child.destination;
     /**
     *関数メッセージの内容の種類
     */
-    var funcmsgType;
     (function (funcmsgType) {
         funcmsgType[funcmsgType["add"] = "add"] = "add";
         funcmsgType[funcmsgType["remove"] = "remove"] = "remove";
         funcmsgType[funcmsgType["state"] = "state"] = "state";
-    })(funcmsgType || (funcmsgType = {}));
+    })(Child.funcmsgType || (Child.funcmsgType = {}));
+    var funcmsgType = Child.funcmsgType;
     //引数の型
-    var argType;
     (function (argType) {
         argType[argType["boolean"] = "boolean"] = "boolean";
         argType[argType["number"] = "number"] = "number";
+        argType[argType["string"] = "string"] = "string";
         argType[argType["int"] = "int"] = "int";
         argType[argType["array"] = "[]"] = "array";
         argType[argType["img"] = "img"] = "img";
         argType[argType["object"] = "object"] = "object";
-    })(argType || (argType = {}));
+    })(Child.argType || (Child.argType = {}));
+    var argType = Child.argType;
     Client.init();
-})(RaspChild = exports.RaspChild || (exports.RaspChild = {}));
+})(Child = exports.Child || (exports.Child = {}));
 //# sourceMappingURL=extension.js.map
