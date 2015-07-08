@@ -7,7 +7,7 @@ c.regist(function (str) {
     args: [{ arg: "str", name: "文字列", desc: "出力する文字列", type: extension.Child.argType.string }],
     status: true,
     push: false,
-    desc: "",
+    desc: "文字を出力します",
     auto: false,
     perm: extension.Child.destination.server,
     result: undefined
