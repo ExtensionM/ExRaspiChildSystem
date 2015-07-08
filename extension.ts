@@ -314,10 +314,13 @@ export module Child {
         */
         private tcpReceived(msg: Buffer): void {
             var that: Client = (<any>this).this;
-            var txt = msg.toString("utf8", 0, msg.length);
-            var obj: message = JSON.parse(txt);
+            try {
+                var txt = msg.toString("utf8", 0, msg.length);
+                var obj: message = JSON.parse(txt);
+            } catch (ex) {
+            }
             switch (obj.type) {
-                case msgType.function:
+                case msgType.call:
                     //親機からの関数呼び出し命令
                     var cMsg: callMessage = <any>obj;
                     if (cMsg.value.function != undefined) {
@@ -466,7 +469,7 @@ export module Child {
         */
         private openSslPort(): void {
             var k = this.privateKey.toPrivatePem();
-            this.ssl = tls.createServer({ cert: this.cert, key:k });
+            this.ssl = tls.createServer({ cert: this.cert, key: k });
             this.ssl.maxConnections = 1;
             this.ssl.listen(this.tcpPort);
             (<any>(this.ssl)).this = this;

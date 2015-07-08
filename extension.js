@@ -267,10 +267,14 @@ var Child;
         */
         Client.prototype.tcpReceived = function (msg) {
             var that = this.this;
-            var txt = msg.toString("utf8", 0, msg.length);
-            var obj = JSON.parse(txt);
+            try {
+                var txt = msg.toString("utf8", 0, msg.length);
+                var obj = JSON.parse(txt);
+            }
+            catch (ex) {
+            }
             switch (obj.type) {
-                case msgType.function:
+                case msgType.call:
                     //親機からの関数呼び出し命令
                     var cMsg = obj;
                     if (cMsg.value.function != undefined) {
