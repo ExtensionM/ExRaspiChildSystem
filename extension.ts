@@ -301,6 +301,22 @@ export module Child {
         }
 
         /**
+        *プッシュ通知を行う
+        *@param {string} name 関数名
+        *@param {any} value 送る値
+        */
+        public push(name: string, value: any) {
+            var obj: pushMessage = {
+                dest: destination.server,
+                id: this.udpMessage.guid,
+                name: this.udpMessage.name,
+                type: msgType.message,
+                value: { function: name, value: value }
+            };
+            this.sendMessage(obj);
+        }
+
+        /**
         *検索、実行
         */
         public run() {
@@ -541,6 +557,15 @@ export module Child {
         value: Object;
     }
 
+    interface pushMessage extends message {
+        value: {
+            //関数名
+            function: string;
+            //返り値
+            value: any;
+        }
+    }
+
     /**
     *関数に関するメッセージ(集合体)
     */
@@ -620,8 +645,8 @@ export module Child {
 
     //引数
     interface argument {
-        //引数名
-        arg: string;
+        //引数名(Resultの場合省略可能)
+        arg?: string;
         //表示名
         name: string;
         //説明

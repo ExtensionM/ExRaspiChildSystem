@@ -254,6 +254,21 @@ var Child;
             }
         };
         /**
+        *プッシュ通知を行う
+        *@param {string} name 関数名
+        *@param {any} value 送る値
+        */
+        Client.prototype.push = function (name, value) {
+            var obj = {
+                dest: destination.server,
+                id: this.udpMessage.guid,
+                name: this.udpMessage.name,
+                type: msgType.message,
+                value: { function: name, value: value }
+            };
+            this.sendMessage(obj);
+        };
+        /**
         *検索、実行
         */
         Client.prototype.run = function () {

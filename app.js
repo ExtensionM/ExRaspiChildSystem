@@ -12,5 +12,24 @@ c.regist(function (str) {
     perm: extension.Child.destination.server,
     result: undefined
 }, "output");
+var readStr;
+c.regist(function () {
+    return readStr;
+}, {
+    name: "入力",
+    args: [],
+    status: true,
+    push: true,
+    desc: "入力された文字をお知らせします",
+    auto: false,
+    perm: extension.Child.destination.server,
+    result: { name: "文字列", desc: "入力された文字", type: extension.Child.argType.string }
+}, "input");
+process.stdin.on('data', function (chunk) {
+    chunk.toString().trim().split('\n').forEach(function (line) {
+        // 1行ずつ表示
+        c.push("input", line);
+    });
+});
 c.run();
 //# sourceMappingURL=app.js.map
