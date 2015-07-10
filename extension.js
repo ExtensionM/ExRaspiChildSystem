@@ -221,6 +221,8 @@ var Child;
         *@param {string} name 関数名(重複不可)
         */
         Client.prototype.regist = function (func, def, name) {
+            if (def.sync === undefined)
+                def.sync = true;
             if (name == undefined) {
                 if (func.name == undefined || func.name == "") {
                     name = "function" + this.funcNo;
@@ -268,7 +270,28 @@ var Child;
             };
             this.sendMessage(obj);
         };
-        Client.prototype.sendResult = function () {
+        /**
+        *
+        *@param {string} name 関数名
+        *@param {any} result 送りたい返り値
+        *@param {boolean} cancelled キャンセルされたか
+        *@param {Error} error エラーの内容
+        */
+        Client.prototype.sendResult = function (name, result, cancelled, error) {
+            var msg = {
+                dest: destination.server,
+                id: this.udpMessage.guid,
+                name: this.udpMessage.name,
+                type: msgType.message,
+                value: {
+                    function: name,
+                    result: result,
+                    cancelled: cancelled || (error != undefined),
+                    hasError: error != undefined,
+                    error: error
+                }
+            };
+            this.sendMessage(msg);
         };
         /**
         *検索、実行

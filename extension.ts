@@ -265,6 +265,7 @@ export module Child {
         *@param {string} name 関数名(重複不可)
         */
         public regist(func: Function, def: funcDef, name?: string) {
+            if (def.sync === undefined) def.sync = true;
             if (name == undefined) {
                 if ((<any>func).name == undefined || (<any>func).name == "") {
                     name = "function" + this.funcNo;
@@ -316,8 +317,26 @@ export module Child {
             this.sendMessage(obj);
         }
 
-        public sendResult() {
-
+        /**
+        *
+        *@param {string} name 関数名
+        *@param {any} result 送りたい返り値
+        *@param {boolean} cancelled キャンセルされたか
+        *@param {Error} error エラーの内容
+        */
+        public sendResult(name: string, result: any, cancelled?: boolean, error?: Error) {
+            var msg: resultMessage = {
+                dest: destination.server,
+                id: this.udpMessage.guid,
+                name: this.udpMessage.name,
+                type: msgType.message,
+                value: {
+                    function: name, result: result,
+                    cancelled: cancelled || (error != undefined),
+                    hasError: error != undefined, error: error
+                }
+            };
+            this.sendMessage(msg);
         }
 
         /**
