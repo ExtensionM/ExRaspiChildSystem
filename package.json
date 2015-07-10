@@ -1,9 +1,9 @@
 {
   "name": "ExChild",
-  "version": "0.0.0",
-  "description": "ExChild",
-  "main": "app.js",
+  "version": "0.0.1",
+  "description": "ƒ‰ƒCƒuƒ‰ƒŠ",
+  "main": "extension.js",
   "dependencies": {
-        "ursa": "^0.8.5"
+    "ursa": "^0.8.5"
   }
 }
