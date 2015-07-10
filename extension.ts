@@ -316,6 +316,10 @@ export module Child {
             this.sendMessage(obj);
         }
 
+        public sendResult() {
+
+        }
+
         /**
         *検索、実行
         */
@@ -578,7 +582,29 @@ export module Child {
     //関数呼び出しに関する情報
     interface callMessage extends message {
         //呼び出しの情報
-        value: call;
+        value: {
+            //関数の名前(固有)
+            function: string;
+            //引数
+            args: any[];
+        };
+    }
+
+    //非同期通知型の結果
+    interface resultMessage extends message {
+        //返り値に関するデータ
+        value: {
+            //関数名
+            function: string;
+            //エラーがあるか
+            hasError: boolean;
+            //キャンセルされたか
+            cancelled: boolean;
+            //エラー
+            error: Error;
+            //結果
+            result: any;
+        }
     }
 
     /**
@@ -624,6 +650,8 @@ export module Child {
         args: argument[];
         //返り値
         result: argument;
+        //同期か
+        sync: boolean
     }
 
     //登録された関数データ
@@ -654,14 +682,6 @@ export module Child {
         desc: string;
         //型名
         type: argType
-    }
-
-    //関数呼び出し時の値
-    interface call {
-        //関数の名前(固有)
-        function: string;
-        //引数
-        args: any[];
     }
 
     Client.init();

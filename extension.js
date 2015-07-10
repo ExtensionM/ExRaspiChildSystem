@@ -268,6 +268,8 @@ var Child;
             };
             this.sendMessage(obj);
         };
+        Client.prototype.sendResult = function () {
+        };
         /**
         *検索、実行
         */
