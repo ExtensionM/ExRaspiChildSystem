@@ -334,6 +334,7 @@ export module Child {
                 var txt = msg.toString("utf8", 0, msg.length);
                 var obj: message = JSON.parse(txt);
             } catch (ex) {
+                return;
             }
             switch (obj.type) {
                 case msgType.call:

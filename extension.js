@@ -287,6 +287,7 @@ var Child;
                 var obj = JSON.parse(txt);
             }
             catch (ex) {
+                return;
             }
             switch (obj.type) {
                 case msgType.call:
