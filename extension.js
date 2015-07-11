@@ -237,7 +237,7 @@ var Child;
             //登録
             this.registedFunc[name] = reg;
             var val;
-            val = { function: name, type: funcmsgType.add, value: def };
+            val = { functionName: name, type: funcmsgType.add, value: def };
             if (this.serverFound) {
                 //サーバと接続済み
                 var msg;
@@ -284,7 +284,7 @@ var Child;
                 name: this.udpMessage.name,
                 type: msgType.message,
                 value: {
-                    function: name,
+                    functionName: name,
                     result: result,
                     cancelled: cancelled || (error != undefined),
                     hasError: error != undefined,
@@ -318,8 +318,8 @@ var Child;
                 case msgType.call:
                     //親機からの関数呼び出し命令
                     var cMsg = obj;
-                    if (cMsg.value.function != undefined) {
-                        that.callFunction(cMsg.value.function, cMsg.value.args);
+                    if (cMsg.value.functionName != undefined) {
+                        that.callFunction(cMsg.value.functionName, cMsg.value.args);
                     }
                     break;
             }

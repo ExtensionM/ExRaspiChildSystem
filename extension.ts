@@ -282,7 +282,7 @@ export module Child {
             this.registedFunc[name] = reg;
 
             var val: functionMessage;
-            val = { function: name, type: funcmsgType.add, value: def }
+            val = { functionName: name, type: funcmsgType.add, value: def }
 
             if (this.serverFound) {
                 //サーバと接続済み
@@ -331,7 +331,7 @@ export module Child {
                 name: this.udpMessage.name,
                 type: msgType.message,
                 value: {
-                    function: name, result: result,
+                    functionName: name, result: result,
                     cancelled: cancelled || (error != undefined),
                     hasError: error != undefined, error: error
                 }
@@ -363,8 +363,8 @@ export module Child {
                 case msgType.call:
                     //親機からの関数呼び出し命令
                     var cMsg: callMessage = <any>obj;
-                    if (cMsg.value.function != undefined) {
-                        that.callFunction(cMsg.value.function, cMsg.value.args);
+                    if (cMsg.value.functionName != undefined) {
+                        that.callFunction(cMsg.value.functionName, cMsg.value.args);
                     }
                     break;
             }
@@ -603,7 +603,7 @@ export module Child {
         //呼び出しの情報
         value: {
             //関数の名前(固有)
-            function: string;
+            functionName: string;
             //引数
             args: any[];
         };
@@ -614,7 +614,7 @@ export module Child {
         //返り値に関するデータ
         value: {
             //関数名
-            function: string;
+            functionName: string;
             //エラーがあるか
             hasError: boolean;
             //キャンセルされたか
@@ -642,7 +642,7 @@ export module Child {
         //メッセージのタイプ
         type: funcmsgType;
         //関数名
-        function: string;
+        functionName: string;
         //利用可能か(type==stateの場合のみ)
         state?: boolean;
         //関数の情報
