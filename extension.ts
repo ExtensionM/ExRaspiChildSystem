@@ -650,7 +650,7 @@ export module Child {
     }
 
     /**
-    *関数に関する情報
+    *関数に関する
     */
     interface funcDef {
         //表示名
@@ -668,7 +668,7 @@ export module Child {
         //引数
         args: argument[];
         //返り値
-        result: argument;
+        result: argType;
         //同期か
         sync: boolean
     }
