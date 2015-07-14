@@ -271,7 +271,7 @@ var Child;
             this.sendMessage(obj);
         };
         /**
-        *
+        *関数の返り値を返す(自動で呼び出されます)
         *@param {string} name 関数名
         *@param {any} result 送りたい返り値
         *@param {boolean} cancelled キャンセルされたか
@@ -289,6 +289,24 @@ var Child;
                     cancelled: cancelled || (error != undefined),
                     hasError: error != undefined,
                     error: error
+                }
+            };
+            this.sendMessage(msg);
+        };
+        /**
+        *関数の返り値を返す(非同期用)
+        *@param {string} name 関数名
+        *@param {any} result 送りたい返り値
+        */
+        Client.prototype.sendResultAsync = function (name, result) {
+            var msg = {
+                dest: destination.server,
+                id: this.udpMessage.guid,
+                name: this.udpMessage.name,
+                type: msgType.message,
+                value: {
+                    functionName: name,
+                    value: result
                 }
             };
             this.sendMessage(msg);
@@ -348,7 +366,16 @@ var Child;
         Client.prototype.callFunction = function (name, args) {
             if (name in this.registedFunc) {
                 //関数が存在するならば
-                this.registedFunc[name].func.apply(this, args);
+                var result;
+                var err;
+                try {
+                    result = this.registedFunc[name].func.apply(this, args);
+                }
+                catch (ex) {
+                    err = ex;
+                }
+                this.sendResult(name, result, err != undefined, err);
+                return true;
             }
             return false;
         };

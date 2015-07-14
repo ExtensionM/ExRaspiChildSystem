@@ -318,13 +318,13 @@ export module Child {
         }
 
         /**
-        *
+        *関数の返り値を返す(自動で呼び出されます)
         *@param {string} name 関数名
         *@param {any} result 送りたい返り値
         *@param {boolean} cancelled キャンセルされたか
         *@param {Error} error エラーの内容
         */
-        public sendResult(name: string, result: any, cancelled?: boolean, error?: Error) {
+        private sendResult(name: string, result: any, cancelled?: boolean, error?: Error) {
             var msg: resultMessage = {
                 dest: destination.server,
                 id: this.udpMessage.guid,
@@ -334,6 +334,25 @@ export module Child {
                     functionName: name, result: result,
                     cancelled: cancelled || (error != undefined),
                     hasError: error != undefined, error: error
+                }
+            };
+            this.sendMessage(msg);
+        }
+
+        /**
+        *関数の返り値を返す(非同期用)
+        *@param {string} name 関数名
+        *@param {any} result 送りたい返り値
+        */
+        public sendResultAsync(name: string, result: any) {
+            var msg: message = {
+                dest: destination.server,
+                id: this.udpMessage.guid,
+                name: this.udpMessage.name,
+                type: msgType.message,
+                value: {
+                    functionName: name,
+                    value:result
                 }
             };
             this.sendMessage(msg);
@@ -395,7 +414,15 @@ export module Child {
         private callFunction(name: string, args: any[]): boolean {
             if (name in this.registedFunc) {
                 //関数が存在するならば
-                this.registedFunc[name].func.apply(this, args);
+                var result;
+                var err: Error;
+                try {
+                    result = this.registedFunc[name].func.apply(this, args);
+                } catch (ex) {
+                    err = ex;
+                }
+                this.sendResult(name, result, err != undefined, err);
+                return true;
             }
             return false;
         }
