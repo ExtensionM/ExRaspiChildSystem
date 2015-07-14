@@ -22,6 +22,7 @@ export module Child {
     export interface udpMessage {
         name: string;
         guid: GUID;
+        port: number;
     }
 
     /**
@@ -125,7 +126,7 @@ export module Child {
         /**
         *udpのポートが開けなかった場合開きなおす範囲
         */
-        public get portRange(): number { return 100; }
+        public get portRange(): number { return 1000; }
         /**
         *udpの送信先のポート番号
         */
@@ -133,7 +134,16 @@ export module Child {
         /**
         *tcp(tls)の受信するポート番号
         */
-        public get tcpPort(): number { return 15000; }
+        public tcpPort: number;
+        /**
+        *tcpポート番号の選ばれる最大
+        */
+        public get tcpMaxPort(): number { return 10000; }
+        /**
+        *tcpポート番号の選ばれる最小
+        */
+        public get tcpMinPort(): number { return 10000; }
+
         /**
         *UDPによる探索パケットの送信間隔
         */
@@ -251,7 +261,7 @@ export module Child {
                     console.log("Cannot Write Config File : " + setting);
                 }
             }
-            this.udpMessage = { name: this.clientType, guid: guid }
+            this.udpMessage = { name: this.clientType, guid: guid, port: -1 }
             console.log("Read Keys");
             console.log("GUID : " + this.udpMessage.guid.toString());
 
@@ -352,7 +362,7 @@ export module Child {
                 type: msgType.message,
                 value: {
                     functionName: name,
-                    value:result
+                    value: result
                 }
             };
             this.sendMessage(msg);
@@ -525,7 +535,18 @@ export module Child {
             var k = this.privateKey.toPrivatePem();
             this.ssl = tls.createServer({ cert: this.cert, key: k });
             this.ssl.maxConnections = 1;
-            this.ssl.listen(this.tcpPort);
+
+            while (true) {
+                try {
+                    this.tcpPort = Math.random() * (this.tcpMaxPort - this.tcpMinPort + 1) + this.tcpMinPort;
+                    this.ssl.listen(this.tcpPort);
+                } catch (ex) {
+                    continue;
+                }
+                break;
+            }
+            this.udpMessage.port = this.tcpPort;
+            console.log("Port No : " + this.tcpPort);
             (<any>(this.ssl)).this = this;
             this.ssl.on('secureConnection', this.tcpConnected);
             this.ssl.on('clientError', this.sslError);
