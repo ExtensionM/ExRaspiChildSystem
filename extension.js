@@ -174,7 +174,7 @@ var Child;
             *tcpポート番号の選ばれる最大
             */
             get: function () {
-                return 10000;
+                return 65000;
             },
             enumerable: true,
             configurable: true
@@ -484,7 +484,7 @@ var Child;
             this.ssl.maxConnections = 1;
             while (true) {
                 try {
-                    this.tcpPort = Math.random() * (this.tcpMaxPort - this.tcpMinPort + 1) + this.tcpMinPort;
+                    this.tcpPort = Math.floor(Math.random() * (this.tcpMaxPort - this.tcpMinPort + 1) + this.tcpMinPort);
                     this.ssl.listen(this.tcpPort);
                 }
                 catch (ex) {

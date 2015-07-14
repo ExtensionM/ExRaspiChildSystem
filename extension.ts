@@ -138,7 +138,7 @@ export module Child {
         /**
         *tcpポート番号の選ばれる最大
         */
-        public get tcpMaxPort(): number { return 10000; }
+        public get tcpMaxPort(): number { return 65000; }
         /**
         *tcpポート番号の選ばれる最小
         */
@@ -538,7 +538,7 @@ export module Child {
 
             while (true) {
                 try {
-                    this.tcpPort = Math.random() * (this.tcpMaxPort - this.tcpMinPort + 1) + this.tcpMinPort;
+                    this.tcpPort =Math.floor( Math.random() * (this.tcpMaxPort - this.tcpMinPort + 1) + this.tcpMinPort);
                     this.ssl.listen(this.tcpPort);
                 } catch (ex) {
                     continue;
