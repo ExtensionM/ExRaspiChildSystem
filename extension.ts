@@ -376,8 +376,10 @@ export module Child {
                 var txt = msg.toString("utf8", 0, msg.length);
                 var obj: message = JSON.parse(txt);
             } catch (ex) {
+                console.log("Err Message");
                 return;
             }
+            console.log("Message Type: " + obj.type);
             switch (obj.type) {
                 case msgType.call:
                     //親機からの関数呼び出し命令
@@ -387,24 +389,6 @@ export module Child {
                     }
                     break;
             }
-
-            /*
-            try {
-                var txt = msg.toString("utf8", 0, msg.length);
-                try {
-                    var obj = JSON.parse(txt);
-                    console.log(txt);
-                    var that: Client = (<any>this).this;
-                    if (that.onmessage != undefined) {
-                        that.onmessage(that, obj);
-                    }
-                } catch (ex) {
-                    console.log('Parse Error :' + txt);
-                }
-            } catch (e) {
-                console.log('Error Message' + e);
-            }
-            */
         }
 
         /**
@@ -420,9 +404,12 @@ export module Child {
                     result = this.registedFunc[name].func.apply(this, args);
                 } catch (ex) {
                     err = ex;
+                    console.log("Call Error : " + err.message);
                 }
                 this.sendResult(name, result, err != undefined, err);
                 return true;
+            } else {
+                console.log("Call Error : Not Exist Function \"" + name + "\"");
             }
             return false;
         }
