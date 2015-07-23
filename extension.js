@@ -292,7 +292,7 @@ var Child;
                 dest: destination.server,
                 id: this.udpMessage.guid,
                 name: this.udpMessage.name,
-                type: msgType.message,
+                type: msgType.result,
                 value: {
                     functionName: name,
                     result: result,

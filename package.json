@@ -1,9 +1,10 @@
 {
   "name": "RaspiChildSystem",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "ƒ‰ƒCƒuƒ‰ƒŠ",
   "main": "extension.js",
   "dependencies": {
     "ursa": "^0.8.5"
+
   }
 }
