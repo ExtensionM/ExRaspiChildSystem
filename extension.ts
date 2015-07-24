@@ -1,5 +1,5 @@
 ///<reference path="Scripts/typings/node/node.d.ts" />
-///<reference path="Scripts/typings/es6-promise.d.ts"/>
+//<reference path="Scripts/typings/es6-promise.d.ts"/>
 //var fs = require('fs');
 //var ursa = require('ursa');
 //var dgram = require('dgram');
@@ -376,8 +376,10 @@ export module Child {
         */
         public run() {
             this.openUdp();
-            this.openSslPort();
-            this.searchServer(this.udpInterval);
+            var th = this;
+            th.openSslPort(function () {
+                th.searchServer(th.udpInterval);
+            });
         }
         /**
         *TCP(SSL)受信時のイベント
@@ -534,37 +536,34 @@ export module Child {
         /**
         *SSLのポートを開ける
         */
-        private openSslPort(): void {
+        private openSslPort(callback: Function): void {
             var k = this.privateKey.toPrivatePem();
 
             this.ssl = tls.createServer({ cert: this.cert, key: k });
             this.ssl.maxConnections = 1;
 
             var th = this;
-            this.ssl.on('error',function(){
-                th.openingSslPort();
-            });
-        }
 
-        public openingSslPort() {
-            var th = this;
-            this.tcpPort = Math.floor(Math.random() * (this.tcpMaxPort - this.tcpMinPort + 1) + this.tcpMinPort);
-            this.ssl.listen(this.tcpPort, undefined, function () {
-                th.openedSslPort();
-            });
+            var openedSslPort=function() {
+                //th.ssl.on('error', null);
+                th.udpMessage.port = th.tcpPort;
+                console.log("Port No : " + th.tcpPort);
+                (<any>(th.ssl)).this = th;
+                th.ssl.on('secureConnection', th.tcpConnected);
+                th.ssl.on('clientError', th.sslError);
+                callback();
+            }
+            var openingSslPort=function() {
+                th.tcpPort = Math.floor(Math.random() * (th.tcpMaxPort - th.tcpMinPort + 1) + th.tcpMinPort);
+                th.ssl.listen(th.tcpPort, undefined, openedSslPort);
+            }
+            th.ssl.on('error', openingSslPort);
+            openingSslPort();
         }
 
         /**
         *ポート番号の登録、受信時の処理の設定を行う
         */
-        public openedSslPort() {
-            this.ssl.on('error', null);
-            this.udpMessage.port = this.tcpPort;
-            console.log("Port No : " + this.tcpPort);
-            (<any>(this.ssl)).this = this;
-            this.ssl.on('secureConnection', this.tcpConnected);
-            this.ssl.on('clientError', this.sslError);
-        }
 
         /**
         *サーバの探査を開始する
