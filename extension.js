@@ -1,8 +1,5 @@
 ///<reference path="Scripts/typings/node/node.d.ts" />
 //<reference path="Scripts/typings/es6-promise.d.ts"/>
-//var fs = require('fs');
-//var ursa = require('ursa');
-//var dgram = require('dgram');
 var fs = require('fs');
 var ursa = require('ursa');
 var dgram = require('dgram');
@@ -231,9 +228,9 @@ var Child;
         *@param {funcDef} def 関数に関する情報
         *@param {string} name 関数名(重複不可)
         */
-        Client.prototype.regist = function (func, def, name) {
-            if (def.sync === undefined)
-                def.sync = true;
+        Client.prototype.regist = function (func, define, name) {
+            if (define.sync === undefined)
+                define.sync = true;
             if (name == undefined) {
                 if (func.name == undefined || func.name == "") {
                     name = "function" + this.funcNo;
@@ -243,12 +240,12 @@ var Child;
             if (name in this.registedFunc) {
                 throw new Error("Already Exist '" + name + "'");
             }
-            var reg = def;
+            var reg = define;
             reg.func = func;
             //登録
             this.registedFunc[name] = reg;
             var val;
-            val = { functionName: name, type: funcmsgType.add, value: def };
+            val = { functionName: name, type: funcmsgType.add, value: define };
             if (this.serverFound) {
                 //サーバと接続済み
                 var msg;

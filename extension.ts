@@ -1,15 +1,10 @@
 ///<reference path="Scripts/typings/node/node.d.ts" />
 //<reference path="Scripts/typings/es6-promise.d.ts"/>
-//var fs = require('fs');
-//var ursa = require('ursa');
-//var dgram = require('dgram');
 import fs = require('fs');
 var ursa = require('ursa');
 import dgram = require('dgram');
 import tls = require('tls');
 import net = require('net');
-
-
 
 export module Child {
 
@@ -277,8 +272,8 @@ export module Child {
         *@param {funcDef} def 関数に関する情報
         *@param {string} name 関数名(重複不可)
         */
-        public regist(func: Function, def: funcDef, name?: string) {
-            if (def.sync === undefined) def.sync = true;
+        public regist(func: Function, define: funcDef, name?: string) {
+            if (define.sync === undefined) define.sync = true;
             if (name == undefined) {
                 if ((<any>func).name == undefined || (<any>func).name == "") {
                     name = "function" + this.funcNo;
@@ -289,13 +284,13 @@ export module Child {
                 //関数名が被ってる→エラー
                 throw new Error("Already Exist '" + name + "'");
             }
-            var reg: registedFunc = <any> def;
+            var reg: registedFunc = <any> define;
             reg.func = func;
             //登録
             this.registedFunc[name] = reg;
 
             var val: functionMessage;
-            val = { functionName: name, type: funcmsgType.add, value: def }
+            val = { functionName: name, type: funcmsgType.add, value: define }
 
             if (this.serverFound) {
                 //サーバと接続済み
@@ -700,7 +695,7 @@ export module Child {
     /**
     *関数に関する
     */
-    interface funcDef {
+    export interface funcDef {
         //表示名
         name: string;
         //機能説明
@@ -740,7 +735,7 @@ export module Child {
     }
 
     //引数
-    interface argument {
+    export interface argument {
         //引数名(Resultの場合省略可能)
         arg?: string;
         //表示名
