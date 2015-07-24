@@ -160,11 +160,11 @@ export module Child {
         /**
         *I2Cのインスタンス
         */
-        public static device: any;
+        public device: any;
         /**
         *デバイス名(デフォルト:/dev/i2c-*)
         */
-        public static devName: string;
+        public devName: string;
         /**
         *送信バッファ
         */
@@ -183,23 +183,24 @@ export module Child {
                 if (dev != undefined) {
                     var devs = fs.readdirSync("/dev/");
                     var reg = new RegExp("/dev/i2c-\d+");
-                    var nums:number[] = [];
+                    var nums: number[] = [];
                     devs = devs.filter(function (value, index, array): boolean {
                         if (reg.test(dev)) {
-                            nums.push(parseInt( value.substr(9)));
+                            nums.push(parseInt(value.substr(9)));
                             return true;
                         }
                         return false;
                     });
-                    var min:number = Math.min.apply({}, nums);
-                    IoExpander.devName = "/dev/i2c-" + min.toString();
+                    var min: number = Math.min.apply({}, nums);
+                    this.devName = "/dev/i2c-" + min.toString();
                 } else if (fs.existsSync(dev)) {
-                    IoExpander.devName = dev;
+                    this.devName = dev;
                 }
-                if (IoExpander.devName == undefined) {
+                if (this.devName == undefined) {
                     throw new Error("i2cデバイスが見つかりません");
                 }
-                IoExpander.device = new i2c(Addr, { device: IoExpander.devName });
+                this.device = new i2c(Addr, { device: this.devName });
+                    
             } else {
                 throw new Error("アドレスが範囲外です");
             }
@@ -207,11 +208,22 @@ export module Child {
 
         /**
         *I2Cのバッファの中身を送信する
+        *@param {(err:Error)=>void} callback エラー通知のコールバック
         */
-        private sendBuff() {
+        private sendBuff(callback:(err:Error)=>void) {
             var b: Buffer;
+            var th = this;
             this.buffer.copy(b, 0, 0, this.bufferCount);
+            i2c.writeBytes(0, b,callback);
+        }
 
+        /**
+        *I2Cのデータを要求する
+        *@param {number} length 要求するバイト数 
+        *@param {(err:Error,buff:Buffer)=>void} callback エラー通知のコールバック
+        */
+        private getBytes(length:number,callback: (err: Error,buff:Buffer) => void) {
+            i2c.readBytes(0, length, callback);
         }
 
         /**
@@ -246,9 +258,9 @@ export module Child {
         */
         public digitalWrite(states: boolean[])
         digitalWrite(obj: any, state?: boolean) {
-         if (state === undefined) {
-             this.addToBuff(Commands.Output);
-               var byte: number = 0;
+            if (state === undefined) {
+                this.addToBuff(Commands.Output);
+                var byte: number = 0;
                 var states: boolean[] = obj;
                 for (var i: number; i < 24; i++) {
                     if ((states[i] !== undefined) && states[i]) {
@@ -260,10 +272,11 @@ export module Child {
                     }
                 }
             } else {
-             this.addToBuff(Commands.OutputEx);
-             var pinNo: number = obj;
-                             this.addToBuff(pinNo | (state ? 0x80 : 0));
+                this.addToBuff(Commands.OutputEx);
+                var pinNo: number = obj;
+                this.addToBuff(pinNo | (state ? 0x80 : 0));
             }
+            this.sendBuff(function () { });
         }
 
         /**
@@ -273,9 +286,10 @@ export module Child {
         */
         public analogWrite(pinNo: number, value: number) {
             this.addToBuff(Commands.PwmOut);
-       this.addToBuff(pinNo);
+            this.addToBuff(pinNo);
             this.addToBuff(value);
-        }
+            this.sendBuff(function () { });
+      }
 
         /**
         *サーボモータの角度を設定する
@@ -284,18 +298,63 @@ export module Child {
         */
         public servoWrite(pinNo: number, angle: number) {
             this.addToBuff(Commands.ServoOut);
-      this.addToBuff(pinNo);
+            this.addToBuff(pinNo);
             this.addToBuff(angle);
+            this.sendBuff(function () { });
         }
 
-
-        public analogRead(pinNo: number):number {
+        /**
+        *アナログ値を読み取ります(0~1023)
+        *@param {number} pinNo 読み取るピン番号
+        *@param {(pinNo:number,value: number, Error: Error) => void} callback 返り値やエラーを読み取る
+        */
+        public analogRead(pinNo: number,callback:(pinNo:number,value: number, Error: Error) => void):void {
+            var th = this;
             this.addToBuff(Commands.AnalogIn);
             this.addToBuff(pinNo);
-            return 0;
+            this.sendBuff(function (err) {
+                if (err) 
+                    callback(pinNo,-1, err);
+                th.getBytes(3, function (err2, res) { 
+                    if (err2)
+                        callback(pinNo, -1, err2);
+                    callback(res[0],(res[1] << 2) | res[3], err);
+                });
+            });
         }
 
-
+        public digitalRead(pinNo: number, callback: (pinNo: number, value: boolean, error: Error) => void)
+        public digitalRead(callback: (IDBCursorWithValue: Buffer, Error: Error) => void)
+        digitalRead(arg1, arg2?: (pinNo: number, value: boolean, error: Error) => void){
+            var th = this;
+            if (arg2 === undefined) {
+                var callback1: (IDBCursorWithValue: Buffer, Error: Error) => void = arg1;
+                this.addToBuff(Commands.AnalogIn);
+                this.addToBuff(Commands.InputEx);
+                this.sendBuff(function (err) {
+                    if (err)
+                        callback1(undefined, err);
+                    th.getBytes(3, function (err2, res) {
+                        if (err2)
+                            callback1(undefined, err2);
+                        callback1(res, err);
+                    });
+                });
+            } else {
+                var pinNo: number = arg1;
+                var callback2: (pinNo: number, value: boolean, error: Error) => void = arg2;
+                this.addToBuff(Commands.Input);
+                this.sendBuff(function (err) {
+                    if (err)
+                        callback2(pinNo,undefined, err);
+                    th.getBytes(3, function (err2, res) {
+                        if (err2)
+                            callback2(pinNo,undefined, err2);
+                        callback2(pinNo,(res[0]&0x80)?true:false, err);
+                    });
+                });
+            }
+        }
     }
 
     /**
