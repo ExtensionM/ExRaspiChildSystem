@@ -1,4 +1,5 @@
-/// <reference path="Scripts/typings/node/node.d.ts" />
+///<reference path="Scripts/typings/node/node.d.ts" />
+///<reference path="Scripts/typings/es6-promise.d.ts"/>
 //var fs = require('fs');
 //var ursa = require('ursa');
 //var dgram = require('dgram');
@@ -482,16 +483,23 @@ var Child;
             var k = this.privateKey.toPrivatePem();
             this.ssl = tls.createServer({ cert: this.cert, key: k });
             this.ssl.maxConnections = 1;
-            while (true) {
-                try {
-                    this.tcpPort = Math.floor(Math.random() * (this.tcpMaxPort - this.tcpMinPort + 1) + this.tcpMinPort);
-                    this.ssl.listen(this.tcpPort);
-                }
-                catch (ex) {
-                    continue;
-                }
-                break;
-            }
+            var th = this;
+            this.ssl.on('error', function () {
+                th.openingSslPort();
+            });
+        };
+        Client.prototype.openingSslPort = function () {
+            var th = this;
+            this.tcpPort = Math.floor(Math.random() * (this.tcpMaxPort - this.tcpMinPort + 1) + this.tcpMinPort);
+            this.ssl.listen(this.tcpPort, undefined, function () {
+                th.openedSslPort();
+            });
+        };
+        /**
+        *ポート番号の登録、受信時の処理の設定を行う
+        */
+        Client.prototype.openedSslPort = function () {
+            this.ssl.on('error', null);
             this.udpMessage.port = this.tcpPort;
             console.log("Port No : " + this.tcpPort);
             (this.ssl).this = this;
