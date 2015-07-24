@@ -8,6 +8,7 @@ export declare module Child {
     */
     interface Setting {
         guid: GUID;
+        devi2c: string;
     }
     /**
     *UDPでサーバ探査時に送信する内容
@@ -45,6 +46,96 @@ export declare module Child {
         *GUIDをJSONに変換(JSON.stringify用 )
         */
         toJSON(): string;
+    }
+    enum PinModes {
+        Disabled = -1,
+        Output = 0,
+        PwmOut = 1,
+        ServoOut = 2,
+        AnalogIn = 4,
+        PullDown = 5,
+        PullUp = 6,
+        Input = 7,
+    }
+    class IoExpander {
+        /**
+        *このインスタンスで扱うアドレス
+        */
+        slaveAddr: number;
+        /**
+        *I2Cのインスタンス
+        */
+        device: any;
+        /**
+        *デバイス名(デフォルト:/dev/i2c-*)
+        */
+        devName: string;
+        /**
+        *送信バッファ
+        */
+        private buffer;
+        /**
+        *バッファに書き込んだ数
+        */
+        private bufferCount;
+        /**
+        *新しいエキスパンダーを作成します
+        *@param {number} Addr I2Cのアドレス
+        */
+        constructor(Addr: number, dev?: string);
+        /**
+        *I2Cのバッファの中身を送信する
+        *@param {(err:Error)=>void} callback エラー通知のコールバック
+        */
+        private sendBuff(callback);
+        /**
+        *I2Cのデータを要求する
+        *@param {number} length 要求するバイト数
+        *@param {(err:Error,buff:Buffer)=>void} callback エラー通知のコールバック
+        */
+        private getBytes(length, callback);
+        /**
+        *送信バッファの最後にバイト値を追加する
+        */
+        private addToBuff(byte);
+        /**
+        *ピンの入出力を設定する
+        *@param {number} pinNo 設定するピン番号
+        *@param {PinModes} mode 設定するモード
+        */
+        pinMode(pinNo: number, mode: PinModes): void;
+        /**
+        *デジタル値を出力する
+        *
+        *@param {number} pinNo 設定するピン番号
+        *@param {boolean} state 出力(True=Hi)
+        */
+        digitalWrite(pinNo: number, state: boolean): any;
+        /**
+        *デジタル値を出力する
+        *@param {boolean[]} states 設定値(長さは最大24)
+        */
+        digitalWrite(states: boolean[]): any;
+        /**
+        *PWMで出力する強さを設定する
+        *@param {number} pinNo 設定するピン番号
+        *@param {number} value 設定する値(0~255)
+        */
+        analogWrite(pinNo: number, value: number): void;
+        /**
+        *サーボモータの角度を設定する
+        *@param {number} pinNo 設定するピン番号
+        *@param {number} value 設定する値(0~180)
+        */
+        servoWrite(pinNo: number, angle: number): void;
+        /**
+        *アナログ値を読み取ります(0~1023)
+        *@param {number} pinNo 読み取るピン番号
+        *@param {(pinNo:number,value: number, Error: Error) => void} callback 返り値やエラーを読み取る
+        */
+        analogRead(pinNo: number, callback: (pinNo: number, value: number, Error: Error) => void): void;
+        digitalRead(pinNo: number, callback: (pinNo: number, value: boolean, error: Error) => void): any;
+        digitalRead(callback: (IDBCursorWithValue: Buffer, Error: Error) => void): any;
     }
     /**
     *子機
