@@ -7,6 +7,7 @@ var ursa = require('ursa');
 import dgram = require('dgram');
 import tls = require('tls');
 import net = require('net');
+var i2c = require('i2c');
 
 export module Child {
 
@@ -15,6 +16,7 @@ export module Child {
     */
     export interface Setting {
         guid: GUID;
+        devi2c: string;
     }
     /**
     *UDPでサーバ探査時に送信する内容
@@ -113,6 +115,187 @@ export module Child {
         public toJSON(): string {
             return this.toString();
         }
+    }
+
+    enum Commands {
+        //ピン入出力設定
+        Destination = 1,
+        //出力命令
+        Output = 2,
+        //出力命令ex
+        OutputEx = 4,
+        //PWM出力命令
+        PwmOut = 8,
+        //サーボ出力命令
+        ServoOut = 16,
+        //アナログ入力命令
+        AnalogIn = 32,
+        //入力命令
+        InputEx = 64,
+        //入力命令
+        Input = 128
+    }
+
+    /*
+    *ピンのモード
+    */
+   export  enum PinModes {
+       Disabled = -1,
+       Output = 0,
+       PwmOut = 1,
+       ServoOut = 2,
+       AnalogIn = 4,
+       PullDown = 5,
+       PullUp = 6,
+       Input = 7
+    }
+
+    export class IoExpander {
+
+
+        /**
+        *このインスタンスで扱うアドレス
+        */
+        public slaveAddr: number;
+        /**
+        *I2Cのインスタンス
+        */
+        public static device: any;
+        /**
+        *デバイス名(デフォルト:/dev/i2c-*)
+        */
+        public static devName: string;
+        /**
+        *送信バッファ
+        */
+        private buffer: Buffer = new Buffer(128);
+        /**
+        *バッファに書き込んだ数
+        */
+        private bufferCount: number = 0;
+        /**
+        *新しいエキスパンダーを作成します
+        *@param {number} Addr I2Cのアドレス
+        */
+        constructor(Addr: number,dev?:string) {
+            if (0b0000111 < Addr && Addr < 0b1111000) {
+                this.slaveAddr = Addr;
+                if (dev != undefined) {
+                    var devs = fs.readdirSync("/dev/");
+                    var reg = new RegExp("/dev/i2c-\d+");
+                    var nums:number[] = [];
+                    devs = devs.filter(function (value, index, array): boolean {
+                        if (reg.test(dev)) {
+                            nums.push(parseInt( value.substr(9)));
+                            return true;
+                        }
+                        return false;
+                    });
+                    var min:number = Math.min.apply({}, nums);
+                    IoExpander.devName = "/dev/i2c-" + min.toString();
+                } else if (fs.existsSync(dev)) {
+                    IoExpander.devName = dev;
+                }
+                if (IoExpander.devName == undefined) {
+                    throw new Error("i2cデバイスが見つかりません");
+                }
+                IoExpander.device = new i2c(Addr, { device: IoExpander.devName });
+            } else {
+                throw new Error("アドレスが範囲外です");
+            }
+        }
+
+        /**
+        *I2Cのバッファの中身を送信する
+        */
+        private sendBuff() {
+            var b: Buffer;
+            this.buffer.copy(b, 0, 0, this.bufferCount);
+
+        }
+
+        /**
+        *送信バッファの最後にバイト値を追加する
+        */
+        private addToBuff(byte: number) {
+            this.buffer.writeUInt8(byte, this.bufferCount);
+            this.bufferCount++;
+        }
+
+        /**
+        *ピンの入出力を設定する
+        *@param {number} pinNo 設定するピン番号
+        *@param {PinModes} mode 設定するモード
+        */
+        public pinMode(pinNo: number, mode: PinModes) {
+            this.addToBuff(Commands.Destination);
+            this.addToBuff(mode);
+            this.addToBuff(pinNo);
+        }
+
+        /**
+        *デジタル値を出力する
+        *
+        *@param {number} pinNo 設定するピン番号
+        *@param {boolean} state 出力(True=Hi)
+        */
+        public    digitalWrite(pinNo: number, state: boolean)
+        /**
+        *デジタル値を出力する
+        *@param {boolean[]} states 設定値(長さは最大24)
+        */
+        public digitalWrite(states: boolean[])
+        digitalWrite(obj: any, state?: boolean) {
+         if (state === undefined) {
+             this.addToBuff(Commands.Output);
+               var byte: number = 0;
+                var states: boolean[] = obj;
+                for (var i: number; i < 24; i++) {
+                    if ((states[i] !== undefined) && states[i]) {
+                        byte |= (i & 7) << 1;
+                    }
+                    if ((i & 7) == 7) {
+                        this.addToBuff(byte);
+                        byte = 0;
+                    }
+                }
+            } else {
+             this.addToBuff(Commands.OutputEx);
+             var pinNo: number = obj;
+                             this.addToBuff(pinNo | (state ? 0x80 : 0));
+            }
+        }
+
+        /**
+        *PWMで出力する強さを設定する
+        *@param {number} pinNo 設定するピン番号
+        *@param {number} value 設定する値(0~255)
+        */
+        public analogWrite(pinNo: number, value: number) {
+            this.addToBuff(Commands.PwmOut);
+       this.addToBuff(pinNo);
+            this.addToBuff(value);
+        }
+
+        /**
+        *サーボモータの角度を設定する
+        *@param {number} pinNo 設定するピン番号
+        *@param {number} value 設定する値(0~180)
+        */
+        public servoWrite(pinNo: number, angle: number) {
+            this.addToBuff(Commands.ServoOut);
+      this.addToBuff(pinNo);
+            this.addToBuff(angle);
+        }
+
+
+        public analogRead(pinNo: number):number {
+            this.addToBuff(Commands.AnalogIn);
+            this.addToBuff(pinNo);
+            return 0;
+        }
+
+
     }
 
     /**
@@ -254,7 +437,7 @@ export module Child {
             }
             if (guid == undefined) {
                 guid = new GUID();
-                var config: Setting = { guid: guid };
+                var config: Setting = { guid: guid, devi2c:"/dev/i2c-1"};
                 try {
                     fs.writeFileSync(setting, JSON.stringify(config));
                 } catch (ex) {

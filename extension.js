@@ -6,6 +6,7 @@ var fs = require('fs');
 var ursa = require('ursa');
 var dgram = require('dgram');
 var tls = require('tls');
+var i2c = require('i2c');
 var Child;
 (function (Child) {
     /**
@@ -80,6 +81,154 @@ var Child;
         return GUID;
     })();
     Child.GUID = GUID;
+    var Commands;
+    (function (Commands) {
+        //ピン入出力設定
+        Commands[Commands["Destination"] = 1] = "Destination";
+        //出力命令
+        Commands[Commands["Output"] = 2] = "Output";
+        //出力命令ex
+        Commands[Commands["OutputEx"] = 4] = "OutputEx";
+        //PWM出力命令
+        Commands[Commands["PwmOut"] = 8] = "PwmOut";
+        //サーボ出力命令
+        Commands[Commands["ServoOut"] = 16] = "ServoOut";
+        //アナログ入力命令
+        Commands[Commands["AnalogIn"] = 32] = "AnalogIn";
+        //入力命令
+        Commands[Commands["InputEx"] = 64] = "InputEx";
+        //入力命令
+        Commands[Commands["Input"] = 128] = "Input";
+    })(Commands || (Commands = {}));
+    /*
+    *ピンのモード
+    */
+    (function (PinModes) {
+        PinModes[PinModes["Disabled"] = -1] = "Disabled";
+        PinModes[PinModes["Output"] = 0] = "Output";
+        PinModes[PinModes["PwmOut"] = 1] = "PwmOut";
+        PinModes[PinModes["ServoOut"] = 2] = "ServoOut";
+        PinModes[PinModes["AnalogIn"] = 4] = "AnalogIn";
+        PinModes[PinModes["PullDown"] = 5] = "PullDown";
+        PinModes[PinModes["PullUp"] = 6] = "PullUp";
+        PinModes[PinModes["Input"] = 7] = "Input";
+    })(Child.PinModes || (Child.PinModes = {}));
+    var PinModes = Child.PinModes;
+    var IoExpander = (function () {
+        /**
+        *新しいエキスパンダーを作成します
+        *@param {number} Addr I2Cのアドレス
+        */
+        function IoExpander(Addr, dev) {
+            /**
+            *送信バッファ
+            */
+            this.buffer = new Buffer(128);
+            /**
+            *バッファに書き込んだ数
+            */
+            this.bufferCount = 0;
+            if (7 < Addr && Addr < 120) {
+                this.slaveAddr = Addr;
+                if (dev != undefined) {
+                    var devs = fs.readdirSync("/dev/");
+                    var reg = new RegExp("/dev/i2c-\d+");
+                    var nums = [];
+                    devs = devs.filter(function (value, index, array) {
+                        if (reg.test(dev)) {
+                            nums.push(parseInt(value.substr(9)));
+                            return true;
+                        }
+                        return false;
+                    });
+                    var min = Math.min.apply({}, nums);
+                    IoExpander.devName = "/dev/i2c-" + min.toString();
+                }
+                else if (fs.existsSync(dev)) {
+                    IoExpander.devName = dev;
+                }
+                if (IoExpander.devName == undefined) {
+                    throw new Error("i2cデバイスが見つかりません");
+                }
+                IoExpander.device = new i2c(Addr, { device: IoExpander.devName });
+            }
+            else {
+                throw new Error("アドレスが範囲外です");
+            }
+        }
+        /**
+        *I2Cのバッファの中身を送信する
+        */
+        IoExpander.prototype.sendBuff = function () {
+            var b;
+            this.buffer.copy(b, 0, 0, this.bufferCount);
+        };
+        /**
+        *送信バッファの最後にバイト値を追加する
+        */
+        IoExpander.prototype.addToBuff = function (byte) {
+            this.buffer.writeUInt8(byte, this.bufferCount);
+            this.bufferCount++;
+        };
+        /**
+        *ピンの入出力を設定する
+        *@param {number} pinNo 設定するピン番号
+        *@param {PinModes} mode 設定するモード
+        */
+        IoExpander.prototype.pinMode = function (pinNo, mode) {
+            this.addToBuff(1 /* Destination */);
+            this.addToBuff(mode);
+            this.addToBuff(pinNo);
+        };
+        IoExpander.prototype.digitalWrite = function (obj, state) {
+            if (state === undefined) {
+                this.addToBuff(2 /* Output */);
+                var byte = 0;
+                var states = obj;
+                for (var i; i < 24; i++) {
+                    if ((states[i] !== undefined) && states[i]) {
+                        byte |= (i & 7) << 1;
+                    }
+                    if ((i & 7) == 7) {
+                        this.addToBuff(byte);
+                        byte = 0;
+                    }
+                }
+            }
+            else {
+                this.addToBuff(4 /* OutputEx */);
+                var pinNo = obj;
+                this.addToBuff(pinNo | (state ? 0x80 : 0));
+            }
+        };
+        /**
+        *PWMで出力する強さを設定する
+        *@param {number} pinNo 設定するピン番号
+        *@param {number} value 設定する値(0~255)
+        */
+        IoExpander.prototype.analogWrite = function (pinNo, value) {
+            this.addToBuff(8 /* PwmOut */);
+            this.addToBuff(pinNo);
+            this.addToBuff(value);
+        };
+        /**
+        *サーボモータの角度を設定する
+        *@param {number} pinNo 設定するピン番号
+        *@param {number} value 設定する値(0~180)
+        */
+        IoExpander.prototype.servoWrite = function (pinNo, angle) {
+            this.addToBuff(16 /* ServoOut */);
+            this.addToBuff(pinNo);
+            this.addToBuff(angle);
+        };
+        IoExpander.prototype.analogRead = function (pinNo) {
+            this.addToBuff(32 /* AnalogIn */);
+            this.addToBuff(pinNo);
+            return 0;
+        };
+        return IoExpander;
+    })();
+    Child.IoExpander = IoExpander;
     /**
     *子機
     */
@@ -126,7 +275,7 @@ var Child;
             }
             if (guid == undefined) {
                 guid = new GUID();
-                var config = { guid: guid };
+                var config = { guid: guid, devi2c: "/dev/i2c-1" };
                 try {
                     fs.writeFileSync(setting, JSON.stringify(config));
                 }
