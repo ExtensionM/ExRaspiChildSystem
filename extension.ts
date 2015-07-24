@@ -1,7 +1,5 @@
-/// <reference path="Scripts/typings/node/node.d.ts" />
-//var fs = require('fs');
-//var ursa = require('ursa');
-//var dgram = require('dgram');
+///<reference path="Scripts/typings/node/node.d.ts" />
+//<reference path="Scripts/typings/es6-promise.d.ts"/>
 import fs = require('fs');
 var ursa = require('ursa');
 import dgram = require('dgram');
@@ -516,8 +514,8 @@ export module Child {
         *@param {funcDef} def 関数に関する情報
         *@param {string} name 関数名(重複不可)
         */
-        public regist(func: Function, def: funcDef, name?: string) {
-            if (def.sync === undefined) def.sync = true;
+        public regist(func: Function, define: funcDef, name?: string) {
+            if (define.sync === undefined) define.sync = true;
             if (name == undefined) {
                 if ((<any>func).name == undefined || (<any>func).name == "") {
                     name = "function" + this.funcNo;
@@ -528,13 +526,13 @@ export module Child {
                 //関数名が被ってる→エラー
                 throw new Error("Already Exist '" + name + "'");
             }
-            var reg: registedFunc = <any> def;
+            var reg: registedFunc = <any> define;
             reg.func = func;
             //登録
             this.registedFunc[name] = reg;
 
             var val: functionMessage;
-            val = { functionName: name, type: funcmsgType.add, value: def }
+            val = { functionName: name, type: funcmsgType.add, value: define }
 
             if (this.serverFound) {
                 //サーバと接続済み
@@ -581,7 +579,7 @@ export module Child {
                 dest: destination.server,
                 id: this.udpMessage.guid,
                 name: this.udpMessage.name,
-                type: msgType.message,
+                type: msgType.result,
                 value: {
                     functionName: name, result: result,
                     cancelled: cancelled || (error != undefined),
@@ -615,8 +613,10 @@ export module Child {
         */
         public run() {
             this.openUdp();
-            this.openSslPort();
-            this.searchServer(this.udpInterval);
+            var th = this;
+            th.openSslPort(function () {
+                th.searchServer(th.udpInterval);
+            });
         }
         /**
         *TCP(SSL)受信時のイベント
@@ -773,26 +773,34 @@ export module Child {
         /**
         *SSLのポートを開ける
         */
-        private openSslPort(): void {
+        private openSslPort(callback: Function): void {
             var k = this.privateKey.toPrivatePem();
+
             this.ssl = tls.createServer({ cert: this.cert, key: k });
             this.ssl.maxConnections = 1;
 
-            while (true) {
-                try {
-                    this.tcpPort =Math.floor( Math.random() * (this.tcpMaxPort - this.tcpMinPort + 1) + this.tcpMinPort);
-                    this.ssl.listen(this.tcpPort);
-                } catch (ex) {
-                    continue;
-                }
-                break;
+            var th = this;
+
+            var openedSslPort=function() {
+                //th.ssl.on('error', null);
+                th.udpMessage.port = th.tcpPort;
+                console.log("Port No : " + th.tcpPort);
+                (<any>(th.ssl)).this = th;
+                th.ssl.on('secureConnection', th.tcpConnected);
+                th.ssl.on('clientError', th.sslError);
+                callback();
             }
-            this.udpMessage.port = this.tcpPort;
-            console.log("Port No : " + this.tcpPort);
-            (<any>(this.ssl)).this = this;
-            this.ssl.on('secureConnection', this.tcpConnected);
-            this.ssl.on('clientError', this.sslError);
+            var openingSslPort=function() {
+                th.tcpPort = Math.floor(Math.random() * (th.tcpMaxPort - th.tcpMinPort + 1) + th.tcpMinPort);
+                th.ssl.listen(th.tcpPort, undefined, openedSslPort);
+            }
+            th.ssl.on('error', openingSslPort);
+            openingSslPort();
         }
+
+        /**
+        *ポート番号の登録、受信時の処理の設定を行う
+        */
 
         /**
         *サーバの探査を開始する
@@ -929,7 +937,7 @@ export module Child {
     /**
     *関数に関する
     */
-    interface funcDef {
+    export interface funcDef {
         //表示名
         name: string;
         //機能説明
@@ -969,7 +977,7 @@ export module Child {
     }
 
     //引数
-    interface argument {
+    export interface argument {
         //引数名(Resultの場合省略可能)
         arg?: string;
         //表示名
