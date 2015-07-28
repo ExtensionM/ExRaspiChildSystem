@@ -136,7 +136,7 @@ var Child;
                         var reg = new RegExp("/dev/i2c-\d+");
                         var nums = [];
                         devs = devs.filter(function (value, index, array) {
-                            if (reg.test(dev)) {
+                            if (reg.test(value)) {
                                 nums.push(parseInt(value.substr(9)));
                                 return true;
                             }

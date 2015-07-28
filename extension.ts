@@ -186,7 +186,7 @@ export module Child {
                         var reg = new RegExp("/dev/i2c-\d+");
                         var nums: number[] = [];
                         devs = devs.filter(function (value, index, array): boolean {
-                            if (reg.test(dev)) {
+                            if (reg.test(value)) {
                                 nums.push(parseInt(value.substr(9)));
                                 return true;
                             }
