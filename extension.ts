@@ -137,15 +137,15 @@ export module Child {
     /*
     *ピンのモード
     */
-   export  enum PinModes {
-       Disabled = -1,
-       Output = 0,
-       PwmOut = 1,
-       ServoOut = 2,
-       AnalogIn = 4,
-       PullDown = 5,
-       PullUp = 6,
-       Input = 7
+    export enum PinModes {
+        Disabled = -1,
+        Output = 0,
+        PwmOut = 1,
+        ServoOut = 2,
+        AnalogIn = 4,
+        PullDown = 5,
+        PullUp = 6,
+        Input = 7
     }
 
     export class IoExpander {
@@ -175,7 +175,7 @@ export module Child {
         *新しいエキスパンダーを作成します
         *@param {number} Addr I2Cのアドレス
         */
-        constructor(Addr: number,dev?:string) {
+        constructor(Addr: number, dev?: string) {
             if (0x07 < Addr && Addr < 0xf0) {
                 this.slaveAddr = Addr;
                 if (dev == undefined) {
@@ -202,7 +202,7 @@ export module Child {
                     throw new Error("i2cデバイスが見つかりません");
                 }
                 this.device = new i2c(Addr, { device: this.devName });
-                    
+
             } else {
                 throw new Error("アドレスが範囲外です");
             }
@@ -212,11 +212,11 @@ export module Child {
         *I2Cのバッファの中身を送信する
         *@param {(err:Error)=>void} callback エラー通知のコールバック
         */
-        private sendBuff(callback:(err:Error)=>void) {
-            var b: Buffer;
+        private sendBuff(callback: (err: Error) => void) {
+            var b: Buffer = new Buffer(this.bufferCount);
             var th = this;
             this.buffer.copy(b, 0, 0, this.bufferCount);
-            i2c.writeBytes(0, b,callback);
+            i2c.writeBytes(0, b, callback);
         }
 
         /**
@@ -224,7 +224,7 @@ export module Child {
         *@param {number} length 要求するバイト数 
         *@param {(err:Error,buff:Buffer)=>void} callback エラー通知のコールバック
         */
-        private getBytes(length:number,callback: (err: Error,buff:Buffer) => void) {
+        private getBytes(length: number, callback: (err: Error, buff: Buffer) => void) {
             i2c.readBytes(0, length, callback);
         }
 
@@ -255,7 +255,7 @@ export module Child {
         *@param {number} pinNo 設定するピン番号
         *@param {boolean} state 出力(True=Hi)
         */
-        public    digitalWrite(pinNo: number, state: boolean)
+        public digitalWrite(pinNo: number, state: boolean)
         /**
         *デジタル値を出力する
         *@param {boolean[]} states 設定値(長さは最大24)
@@ -296,7 +296,7 @@ export module Child {
             this.addToBuff(pinNo);
             this.addToBuff(value);
             this.sendBuff(function () { });
-      }
+        }
 
         /**
         *サーボモータの角度を設定する
@@ -316,15 +316,15 @@ export module Child {
         *@param {number} pinNo 読み取るピン番号
         *@param {(pinNo:number,value: number, Error: Error) => void} callback 返り値やエラーを読み取る
         */
-        public analogRead(pinNo: number,callback:(pinNo:number,value: number, Error: Error) => void):void {
+        public analogRead(pinNo: number, callback: (pinNo: number, value: number, Error: Error) => void): void {
             var th = this;
             this.addToBuff(Commands.AnalogIn);
             this.addToBuff(1);
             this.addToBuff(pinNo);
             this.sendBuff(function (err) {
-                if (err) 
-                    callback(pinNo,-1, err);
-                th.getBytes(3, function (err2, res) { 
+                if (err)
+                    callback(pinNo, -1, err);
+                th.getBytes(3, function (err2, res) {
                     if (err2)
                         callback(pinNo, -1, err2);
                     callback(res[0],(res[1] << 2) | res[3], err);
@@ -334,7 +334,7 @@ export module Child {
 
         public digitalRead(pinNo: number, callback: (pinNo: number, value: boolean, error: Error) => void)
         public digitalRead(callback: (IDBCursorWithValue: Buffer, Error: Error) => void)
-        digitalRead(arg1, arg2?: (pinNo: number, value: boolean, error: Error) => void){
+        digitalRead(arg1, arg2?: (pinNo: number, value: boolean, error: Error) => void) {
             var th = this;
             if (arg2 === undefined) {
                 var pinNo: number = arg1;
@@ -352,7 +352,7 @@ export module Child {
                     });
                 });
             } else {
-                var callback2: (IDBCursorWithValue: Buffer, Error: Error)  => void = arg1;
+                var callback2: (IDBCursorWithValue: Buffer, Error: Error) => void = arg1;
                 this.addToBuff(Commands.Input);
                 this.addToBuff(1);
                 this.sendBuff(function (err) {
@@ -507,7 +507,7 @@ export module Child {
             }
             if (guid == undefined) {
                 guid = new GUID();
-                var config: Setting = { guid: guid, devi2c:"/dev/i2c-1"};
+                var config: Setting = { guid: guid, devi2c: "/dev/i2c-1" };
                 try {
                     fs.writeFileSync(setting, JSON.stringify(config));
                 } catch (ex) {
@@ -794,7 +794,7 @@ export module Child {
 
             var th = this;
 
-            var openedSslPort=function() {
+            var openedSslPort = function () {
                 //th.ssl.on('error', null);
                 th.udpMessage.port = th.tcpPort;
                 console.log("Port No : " + th.tcpPort);
@@ -803,7 +803,7 @@ export module Child {
                 th.ssl.on('clientError', th.sslError);
                 callback();
             }
-            var openingSslPort=function() {
+            var openingSslPort = function () {
                 th.tcpPort = Math.floor(Math.random() * (th.tcpMaxPort - th.tcpMinPort + 1) + th.tcpMinPort);
                 th.ssl.listen(th.tcpPort, undefined, openedSslPort);
             }

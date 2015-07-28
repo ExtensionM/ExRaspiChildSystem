@@ -163,7 +163,7 @@ var Child;
         *@param {(err:Error)=>void} callback エラー通知のコールバック
         */
         IoExpander.prototype.sendBuff = function (callback) {
-            var b;
+            var b = new Buffer(this.bufferCount);
             var th = this;
             this.buffer.copy(b, 0, 0, this.bufferCount);
             i2c.writeBytes(0, b, callback);
