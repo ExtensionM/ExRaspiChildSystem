@@ -133,7 +133,7 @@ var Child;
                         this.devName = "/dev/i2c_dev";
                     else {
                         var devs = fs.readdirSync("/dev/");
-                        var reg = new RegExp("i2c-\d+");
+                        var reg = /i2c-\d+/;
                         var nums = [];
                         devs = devs.filter(function (value, index, array) {
                             if (reg.test(value)) {
