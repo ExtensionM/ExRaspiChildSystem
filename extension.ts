@@ -216,7 +216,7 @@ export module Child {
             var b: Buffer = new Buffer(this.bufferCount);
             var th = this;
             this.buffer.copy(b, 0, 0, this.bufferCount);
-            i2c.writeBytes(0, b, callback);
+            this.device.writeBytes(0, b, callback);
         }
 
         /**
@@ -225,7 +225,7 @@ export module Child {
         *@param {(err:Error,buff:Buffer)=>void} callback エラー通知のコールバック
         */
         private getBytes(length: number, callback: (err: Error, buff: Buffer) => void) {
-            i2c.readBytes(0, length, callback);
+            this.device.readBytes(0, length, callback);
         }
 
         /**

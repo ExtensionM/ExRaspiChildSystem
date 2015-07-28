@@ -166,7 +166,7 @@ var Child;
             var b = new Buffer(this.bufferCount);
             var th = this;
             this.buffer.copy(b, 0, 0, this.bufferCount);
-            i2c.writeBytes(0, b, callback);
+            this.device.writeBytes(0, b, callback);
         };
         /**
         *I2Cのデータを要求する
@@ -174,7 +174,7 @@ var Child;
         *@param {(err:Error,buff:Buffer)=>void} callback エラー通知のコールバック
         */
         IoExpander.prototype.getBytes = function (length, callback) {
-            i2c.readBytes(0, length, callback);
+            this.device.readBytes(0, length, callback);
         };
         /**
         *送信バッファの最後にバイト値を追加する
