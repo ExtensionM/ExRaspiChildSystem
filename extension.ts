@@ -183,11 +183,11 @@ export module Child {
                         this.devName = "/dev/i2c_dev";
                     else {
                         var devs = fs.readdirSync("/dev/");
-                        var reg = new RegExp("/dev/i2c-\d+");
+                        var reg = new RegExp("i2c-\d+");
                         var nums: number[] = [];
                         devs = devs.filter(function (value, index, array): boolean {
                             if (reg.test(value)) {
-                                nums.push(parseInt(value.substr(9)));
+                                nums.push(parseInt(value.substr(4)));
                                 return true;
                             }
                             return false;
