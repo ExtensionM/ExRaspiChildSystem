@@ -178,7 +178,7 @@ export module Child {
         constructor(Addr: number,dev?:string) {
             if (0x07 < Addr && Addr < 0xf0) {
                 this.slaveAddr = Addr;
-                if (dev != undefined) {
+                if (dev == undefined) {
                     if (fs.existsSync("/dev/i2c_dev"))
                         this.devName = "/dev/i2c_dev";
                     else {
