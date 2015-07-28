@@ -126,21 +126,25 @@ var Child;
             *バッファに書き込んだ数
             */
             this.bufferCount = 0;
-            if (0b0000111 < Addr && Addr < 0b1111000) {
+            if (0x07 < Addr && Addr < 0xf0) {
                 this.slaveAddr = Addr;
                 if (dev != undefined) {
-                    var devs = fs.readdirSync("/dev/");
-                    var reg = new RegExp("/dev/i2c-\d+");
-                    var nums = [];
-                    devs = devs.filter(function (value, index, array) {
-                        if (reg.test(dev)) {
-                            nums.push(parseInt(value.substr(9)));
-                            return true;
-                        }
-                        return false;
-                    });
-                    var min = Math.min.apply({}, nums);
-                    this.devName = "/dev/i2c-" + min.toString();
+                    if (fs.existsSync("/dev/i2c_dev"))
+                        this.devName = "/dev/i2c_dev";
+                    else {
+                        var devs = fs.readdirSync("/dev/");
+                        var reg = new RegExp("/dev/i2c-\d+");
+                        var nums = [];
+                        devs = devs.filter(function (value, index, array) {
+                            if (reg.test(dev)) {
+                                nums.push(parseInt(value.substr(9)));
+                                return true;
+                            }
+                            return false;
+                        });
+                        var min = Math.min.apply({}, nums);
+                        this.devName = "/dev/i2c-" + min.toString();
+                    }
                 }
                 else if (fs.existsSync(dev)) {
                     this.devName = dev;
@@ -186,12 +190,16 @@ var Child;
         */
         IoExpander.prototype.pinMode = function (pinNo, mode) {
             this.addToBuff(1 /* Destination */);
+            this.addToBuff(1);
             this.addToBuff(mode);
             this.addToBuff(pinNo);
+            this.sendBuff(function () {
+            });
         };
         IoExpander.prototype.digitalWrite = function (obj, state) {
             if (state === undefined) {
                 this.addToBuff(2 /* Output */);
+                this.addToBuff(1);
                 var byte = 0;
                 var states = obj;
                 for (var i; i < 24; i++) {
@@ -206,6 +214,7 @@ var Child;
             }
             else {
                 this.addToBuff(4 /* OutputEx */);
+                this.addToBuff(1);
                 var pinNo = obj;
                 this.addToBuff(pinNo | (state ? 0x80 : 0));
             }
@@ -219,6 +228,7 @@ var Child;
         */
         IoExpander.prototype.analogWrite = function (pinNo, value) {
             this.addToBuff(8 /* PwmOut */);
+            this.addToBuff(1);
             this.addToBuff(pinNo);
             this.addToBuff(value);
             this.sendBuff(function () {
@@ -231,6 +241,7 @@ var Child;
         */
         IoExpander.prototype.servoWrite = function (pinNo, angle) {
             this.addToBuff(16 /* ServoOut */);
+            this.addToBuff(1);
             this.addToBuff(pinNo);
             this.addToBuff(angle);
             this.sendBuff(function () {
@@ -244,6 +255,7 @@ var Child;
         IoExpander.prototype.analogRead = function (pinNo, callback) {
             var th = this;
             this.addToBuff(32 /* AnalogIn */);
+            this.addToBuff(1);
             this.addToBuff(pinNo);
             this.sendBuff(function (err) {
                 if (err)
@@ -258,30 +270,32 @@ var Child;
         IoExpander.prototype.digitalRead = function (arg1, arg2) {
             var th = this;
             if (arg2 === undefined) {
-                var callback1 = arg1;
-                this.addToBuff(32 /* AnalogIn */);
+                var pinNo = arg1;
+                var callback1 = arg2;
                 this.addToBuff(64 /* InputEx */);
+                this.addToBuff(pinNo);
+                this.addToBuff(1);
                 this.sendBuff(function (err) {
                     if (err)
-                        callback1(undefined, err);
+                        callback1(pinNo, undefined, err);
                     th.getBytes(3, function (err2, res) {
                         if (err2)
-                            callback1(undefined, err2);
-                        callback1(res, err);
+                            callback1(pinNo, undefined, err2);
+                        callback1(pinNo, (res[0] & 0x80) ? true : false, err);
                     });
                 });
             }
             else {
-                var pinNo = arg1;
-                var callback2 = arg2;
+                var callback2 = arg1;
                 this.addToBuff(128 /* Input */);
+                this.addToBuff(1);
                 this.sendBuff(function (err) {
                     if (err)
-                        callback2(pinNo, undefined, err);
+                        callback2(undefined, err);
                     th.getBytes(3, function (err2, res) {
                         if (err2)
-                            callback2(pinNo, undefined, err2);
-                        callback2(pinNo, (res[0] & 0x80) ? true : false, err);
+                            callback2(undefined, err2);
+                        callback2(res, err);
                     });
                 });
             }

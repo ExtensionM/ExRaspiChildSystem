@@ -176,21 +176,25 @@ export module Child {
         *@param {number} Addr I2Cのアドレス
         */
         constructor(Addr: number,dev?:string) {
-            if (0b0000111 < Addr && Addr < 0b1111000) {
+            if (0x07 < Addr && Addr < 0xf0) {
                 this.slaveAddr = Addr;
                 if (dev != undefined) {
-                    var devs = fs.readdirSync("/dev/");
-                    var reg = new RegExp("/dev/i2c-\d+");
-                    var nums: number[] = [];
-                    devs = devs.filter(function (value, index, array): boolean {
-                        if (reg.test(dev)) {
-                            nums.push(parseInt(value.substr(9)));
-                            return true;
-                        }
-                        return false;
-                    });
-                    var min: number = Math.min.apply({}, nums);
-                    this.devName = "/dev/i2c-" + min.toString();
+                    if (fs.existsSync("/dev/i2c_dev"))
+                        this.devName = "/dev/i2c_dev";
+                    else {
+                        var devs = fs.readdirSync("/dev/");
+                        var reg = new RegExp("/dev/i2c-\d+");
+                        var nums: number[] = [];
+                        devs = devs.filter(function (value, index, array): boolean {
+                            if (reg.test(dev)) {
+                                nums.push(parseInt(value.substr(9)));
+                                return true;
+                            }
+                            return false;
+                        });
+                        var min: number = Math.min.apply({}, nums);
+                        this.devName = "/dev/i2c-" + min.toString();
+                    }
                 } else if (fs.existsSync(dev)) {
                     this.devName = dev;
                 }
@@ -239,8 +243,10 @@ export module Child {
         */
         public pinMode(pinNo: number, mode: PinModes) {
             this.addToBuff(Commands.Destination);
+            this.addToBuff(1);
             this.addToBuff(mode);
             this.addToBuff(pinNo);
+            this.sendBuff(function () { });
         }
 
         /**
@@ -258,6 +264,7 @@ export module Child {
         digitalWrite(obj: any, state?: boolean) {
             if (state === undefined) {
                 this.addToBuff(Commands.Output);
+                this.addToBuff(1);
                 var byte: number = 0;
                 var states: boolean[] = obj;
                 for (var i: number; i < 24; i++) {
@@ -271,6 +278,7 @@ export module Child {
                 }
             } else {
                 this.addToBuff(Commands.OutputEx);
+                this.addToBuff(1);
                 var pinNo: number = obj;
                 this.addToBuff(pinNo | (state ? 0x80 : 0));
             }
@@ -284,6 +292,7 @@ export module Child {
         */
         public analogWrite(pinNo: number, value: number) {
             this.addToBuff(Commands.PwmOut);
+            this.addToBuff(1);
             this.addToBuff(pinNo);
             this.addToBuff(value);
             this.sendBuff(function () { });
@@ -296,6 +305,7 @@ export module Child {
         */
         public servoWrite(pinNo: number, angle: number) {
             this.addToBuff(Commands.ServoOut);
+            this.addToBuff(1);
             this.addToBuff(pinNo);
             this.addToBuff(angle);
             this.sendBuff(function () { });
@@ -309,6 +319,7 @@ export module Child {
         public analogRead(pinNo: number,callback:(pinNo:number,value: number, Error: Error) => void):void {
             var th = this;
             this.addToBuff(Commands.AnalogIn);
+            this.addToBuff(1);
             this.addToBuff(pinNo);
             this.sendBuff(function (err) {
                 if (err) 
@@ -326,29 +337,31 @@ export module Child {
         digitalRead(arg1, arg2?: (pinNo: number, value: boolean, error: Error) => void){
             var th = this;
             if (arg2 === undefined) {
-                var callback1: (IDBCursorWithValue: Buffer, Error: Error) => void = arg1;
-                this.addToBuff(Commands.AnalogIn);
+                var pinNo: number = arg1;
+                var callback1: (pinNo: number, value: boolean, error: Error) => void = arg2;
                 this.addToBuff(Commands.InputEx);
+                this.addToBuff(pinNo);
+                this.addToBuff(1);
                 this.sendBuff(function (err) {
                     if (err)
-                        callback1(undefined, err);
+                        callback1(pinNo, undefined, err);
                     th.getBytes(3, function (err2, res) {
                         if (err2)
-                            callback1(undefined, err2);
-                        callback1(res, err);
+                            callback1(pinNo, undefined, err2);
+                        callback1(pinNo,(res[0] & 0x80) ? true : false, err);
                     });
                 });
             } else {
-                var pinNo: number = arg1;
-                var callback2: (pinNo: number, value: boolean, error: Error) => void = arg2;
+                var callback2: (IDBCursorWithValue: Buffer, Error: Error)  => void = arg1;
                 this.addToBuff(Commands.Input);
+                this.addToBuff(1);
                 this.sendBuff(function (err) {
                     if (err)
-                        callback2(pinNo,undefined, err);
+                        callback2(undefined, err);
                     th.getBytes(3, function (err2, res) {
                         if (err2)
-                            callback2(pinNo,undefined, err2);
-                        callback2(pinNo,(res[0]&0x80)?true:false, err);
+                            callback2(undefined, err2);
+                        callback2(res, err);
                     });
                 });
             }
