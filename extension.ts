@@ -217,6 +217,7 @@ export module Child {
             var th = this;
             this.buffer.copy(b, 0, 0, this.bufferCount);
             this.device.writeBytes(0, b, callback);
+            this.bufferCount = 0;
         }
 
         /**
