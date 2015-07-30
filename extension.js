@@ -1,17 +1,12 @@
-///<reference path="Scripts/typings/node/node.d.ts" />
-//<reference path="Scripts/typings/es6-promise.d.ts"/>
-var fs = require('fs');
 var ursa = require('ursa');
-var dgram = require('dgram');
-var tls = require('tls');
 var i2c = require('i2c');
-var Child;
+export var Child;
 (function (Child) {
     /**
     *GUIDの値
     */
-    var GUID = (function () {
-        function GUID(arg) {
+    class GUID {
+        constructor(arg) {
             var data;
             var text;
             if (typeof (arg) == "string") {
@@ -54,7 +49,7 @@ var Child;
         *GUIDを文字列に変換
         *@return GUIDの文字列 FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF
         */
-        GUID.prototype.toString = function () {
+        toString() {
             var output = "";
             var lens = [4, 2, 2, 2, 6];
             var i, j;
@@ -69,15 +64,14 @@ var Child;
                 }
             }
             return output;
-        };
+        }
         /**
         *GUIDをJSONに変換(JSON.stringify用 )
         */
-        GUID.prototype.toJSON = function () {
+        toJSON() {
             return this.toString();
-        };
-        return GUID;
-    })();
+        }
+    }
     Child.GUID = GUID;
     var Commands;
     (function (Commands) {
@@ -112,12 +106,12 @@ var Child;
         PinModes[PinModes["Input"] = 7] = "Input";
     })(Child.PinModes || (Child.PinModes = {}));
     var PinModes = Child.PinModes;
-    var IoExpander = (function () {
+    class IoExpander {
         /**
         *新しいエキスパンダーを作成します
         *@param {number} Addr I2Cのアドレス
         */
-        function IoExpander(Addr, dev) {
+        constructor(Addr, dev) {
             /**
             *送信バッファ
             */
@@ -162,44 +156,43 @@ var Child;
         *I2Cのバッファの中身を送信する
         *@param {(err:Error)=>void} callback エラー通知のコールバック
         */
-        IoExpander.prototype.sendBuff = function (callback) {
+        sendBuff(callback) {
             var b = new Buffer(this.bufferCount);
             var th = this;
             this.buffer.copy(b, 0, 0, this.bufferCount);
             this.device.writeBytes(0, b, callback);
             this.bufferCount = 0;
-        };
+        }
         /**
         *I2Cのデータを要求する
         *@param {number} length 要求するバイト数
         *@param {(err:Error,buff:Buffer)=>void} callback エラー通知のコールバック
         */
-        IoExpander.prototype.getBytes = function (length, callback) {
+        getBytes(length, callback) {
             this.device.readBytes(0, length, callback);
-        };
+        }
         /**
         *送信バッファの最後にバイト値を追加する
         */
-        IoExpander.prototype.addToBuff = function (byte) {
+        addToBuff(byte) {
             this.buffer.writeUInt8(byte, this.bufferCount);
             this.bufferCount++;
-        };
+        }
         /**
         *ピンの入出力を設定する
         *@param {number} pinNo 設定するピン番号
         *@param {PinModes} mode 設定するモード
         */
-        IoExpander.prototype.pinMode = function (pinNo, mode) {
-            this.addToBuff(1 /* Destination */);
+        pinMode(pinNo, mode) {
+            this.addToBuff(Commands.Destination);
             this.addToBuff(1);
             this.addToBuff(mode);
             this.addToBuff(pinNo);
-            this.sendBuff(function () {
-            });
-        };
-        IoExpander.prototype.digitalWrite = function (obj, state) {
+            this.sendBuff(function () { });
+        }
+        digitalWrite(obj, state) {
             if (state === undefined) {
-                this.addToBuff(2 /* Output */);
+                this.addToBuff(Commands.Output);
                 this.addToBuff(1);
                 var byte = 0;
                 var states = obj;
@@ -214,48 +207,45 @@ var Child;
                 }
             }
             else {
-                this.addToBuff(4 /* OutputEx */);
+                this.addToBuff(Commands.OutputEx);
                 this.addToBuff(1);
                 var pinNo = obj;
                 this.addToBuff(pinNo | (state ? 0x80 : 0));
             }
-            this.sendBuff(function () {
-            });
-        };
+            this.sendBuff(function () { });
+        }
         /**
         *PWMで出力する強さを設定する
         *@param {number} pinNo 設定するピン番号
         *@param {number} value 設定する値(0~255)
         */
-        IoExpander.prototype.analogWrite = function (pinNo, value) {
-            this.addToBuff(8 /* PwmOut */);
+        analogWrite(pinNo, value) {
+            this.addToBuff(Commands.PwmOut);
             this.addToBuff(1);
             this.addToBuff(pinNo);
             this.addToBuff(value);
-            this.sendBuff(function () {
-            });
-        };
+            this.sendBuff(function () { });
+        }
         /**
         *サーボモータの角度を設定する
         *@param {number} pinNo 設定するピン番号
         *@param {number} value 設定する値(0~180)
         */
-        IoExpander.prototype.servoWrite = function (pinNo, angle) {
-            this.addToBuff(16 /* ServoOut */);
+        servoWrite(pinNo, angle) {
+            this.addToBuff(Commands.ServoOut);
             this.addToBuff(1);
             this.addToBuff(pinNo);
             this.addToBuff(angle);
-            this.sendBuff(function () {
-            });
-        };
+            this.sendBuff(function () { });
+        }
         /**
         *アナログ値を読み取ります(0~1023)
         *@param {number} pinNo 読み取るピン番号
         *@param {(pinNo:number,value: number, Error: Error) => void} callback 返り値やエラーを読み取る
         */
-        IoExpander.prototype.analogRead = function (pinNo, callback) {
+        analogRead(pinNo, callback) {
             var th = this;
-            this.addToBuff(32 /* AnalogIn */);
+            this.addToBuff(Commands.AnalogIn);
             this.addToBuff(1);
             this.addToBuff(pinNo);
             this.sendBuff(function (err) {
@@ -267,13 +257,13 @@ var Child;
                     callback(res[0], (res[1] << 2) | res[3], err);
                 });
             });
-        };
-        IoExpander.prototype.digitalRead = function (arg1, arg2) {
+        }
+        digitalRead(arg1, arg2) {
             var th = this;
             if (arg2 === undefined) {
                 var pinNo = arg1;
                 var callback1 = arg2;
-                this.addToBuff(64 /* InputEx */);
+                this.addToBuff(Commands.InputEx);
                 this.addToBuff(pinNo);
                 this.addToBuff(1);
                 this.sendBuff(function (err) {
@@ -288,7 +278,7 @@ var Child;
             }
             else {
                 var callback2 = arg1;
-                this.addToBuff(128 /* Input */);
+                this.addToBuff(Commands.Input);
                 this.addToBuff(1);
                 this.sendBuff(function (err) {
                     if (err)
@@ -300,14 +290,13 @@ var Child;
                     });
                 });
             }
-        };
-        return IoExpander;
-    })();
+        }
+    }
     Child.IoExpander = IoExpander;
     /**
     *子機
     */
-    var Client = (function () {
+    class Client {
         /**
         *初期化
         *@param {string} privateKey プライベートキーのパス
@@ -316,7 +305,7 @@ var Child;
         *@param {string} setting 設定ファイルのパス
         *@param {string} clientType クライアントの種類
         */
-        function Client(privateKey, publicKey, cert, setting, clientType) {
+        constructor(privateKey, publicKey, cert, setting, clientType) {
             this._clientType = "Client";
             /**
             *サーバの探索が終わっているか否か
@@ -339,6 +328,7 @@ var Child;
             }
             var guid = undefined;
             if (setting != undefined && fs.existsSync(setting)) {
+                //設定ファイルが存在
                 try {
                     var obj = JSON.parse(fs.readFileSync(setting).toString("utf8"));
                     if (obj.guid != undefined) {
@@ -363,98 +353,58 @@ var Child;
             console.log("GUID : " + this.udpMessage.guid.toString());
             this.udp = dgram.createSocket("udp4");
         }
-        Object.defineProperty(Client.prototype, "srcPort", {
-            /**
-            *udpの送信元のポート番号
-            */
-            get: function () {
-                return 10001;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Object.defineProperty(Client.prototype, "portRange", {
-            /**
-            *udpのポートが開けなかった場合開きなおす範囲
-            */
-            get: function () {
-                return 1000;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Object.defineProperty(Client.prototype, "destPort", {
-            /**
-            *udpの送信先のポート番号
-            */
-            get: function () {
-                return 8000;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Object.defineProperty(Client.prototype, "tcpMaxPort", {
-            /**
-            *tcpポート番号の選ばれる最大
-            */
-            get: function () {
-                return 65000;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Object.defineProperty(Client.prototype, "tcpMinPort", {
-            /**
-            *tcpポート番号の選ばれる最小
-            */
-            get: function () {
-                return 10000;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Object.defineProperty(Client.prototype, "udpInterval", {
-            /**
-            *UDPによる探索パケットの送信間隔
-            */
-            get: function () {
-                return 2500;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Object.defineProperty(Client.prototype, "clientType", {
-            /**
-            *子機の機能の種類
-            */
-            get: function () {
-                return this._clientType;
-            },
-            /**
-            *子機の機能の種類
-            */
-            set: function (name) {
-                if (name == undefined || name.replace(" ", "").replace("　", "") == "")
-                    throw new Error("Clientの名前に空白は使用できません");
-                if (name == "server")
-                    throw new Error("Clientの名前に[server]は使用できません");
-                this._clientType = name;
-            },
-            enumerable: true,
-            configurable: true
-        });
+        /**
+        *udpの送信元のポート番号
+        */
+        get srcPort() { return 10001; }
+        /**
+        *udpのポートが開けなかった場合開きなおす範囲
+        */
+        get portRange() { return 1000; }
+        /**
+        *udpの送信先のポート番号
+        */
+        get destPort() { return 8000; }
+        /**
+        *tcpポート番号の選ばれる最大
+        */
+        get tcpMaxPort() { return 65000; }
+        /**
+        *tcpポート番号の選ばれる最小
+        */
+        get tcpMinPort() { return 10000; }
+        /**
+        *UDPによる探索パケットの送信間隔
+        */
+        get udpInterval() { return 2500; }
+        /**
+        *子機の機能の種類
+        */
+        get clientType() {
+            return this._clientType;
+        }
+        /**
+        *子機の機能の種類
+        */
+        set clientType(name) {
+            if (name == undefined || name.replace(" ", "").replace("　", "") == "")
+                throw new Error("Clientの名前に空白は使用できません");
+            if (name == "server")
+                throw new Error("Clientの名前に[server]は使用できません");
+            this._clientType = name;
+        }
         /**
         *静的コンストラクタ
         */
-        Client.init = function () {
-        };
+        static init() {
+        }
         /**
         *使用できる関数を登録する
         *@param {Function} func 呼び出される関数
         *@param {funcDef} def 関数に関する情報
         *@param {string} name 関数名(重複不可)
         */
-        Client.prototype.regist = function (func, define, name) {
+        regist(func, define, name) {
             if (define.sync === undefined)
                 define.sync = true;
             if (name == undefined) {
@@ -464,6 +414,7 @@ var Child;
                 }
             }
             if (name in this.registedFunc) {
+                //関数名が被ってる→エラー
                 throw new Error("Already Exist '" + name + "'");
             }
             var reg = define;
@@ -488,13 +439,13 @@ var Child;
                     this.registerBuff.value.push(val);
                 }
             }
-        };
+        }
         /**
         *プッシュ通知を行う
         *@param {string} name 関数名
         *@param {any} value 送る値
         */
-        Client.prototype.push = function (name, value) {
+        push(name, value) {
             var obj = {
                 dest: destination.server,
                 id: this.udpMessage.guid,
@@ -503,7 +454,7 @@ var Child;
                 value: { function: name, value: value }
             };
             this.sendMessage(obj);
-        };
+        }
         /**
         *関数の返り値を返す(自動で呼び出されます)
         *@param {string} name 関数名
@@ -511,28 +462,26 @@ var Child;
         *@param {boolean} cancelled キャンセルされたか
         *@param {Error} error エラーの内容
         */
-        Client.prototype.sendResult = function (name, result, cancelled, error) {
+        sendResult(name, result, cancelled, error) {
             var msg = {
                 dest: destination.server,
                 id: this.udpMessage.guid,
                 name: this.udpMessage.name,
                 type: msgType.result,
                 value: {
-                    functionName: name,
-                    result: result,
+                    functionName: name, result: result,
                     cancelled: cancelled || (error != undefined),
-                    hasError: error != undefined,
-                    error: error
+                    hasError: error != undefined, error: error
                 }
             };
             this.sendMessage(msg);
-        };
+        }
         /**
         *関数の返り値を返す(非同期用)
         *@param {string} name 関数名
         *@param {any} result 送りたい返り値
         */
-        Client.prototype.sendResultAsync = function (name, result) {
+        sendResultAsync(name, result) {
             var msg = {
                 dest: destination.server,
                 id: this.udpMessage.guid,
@@ -544,22 +493,22 @@ var Child;
                 }
             };
             this.sendMessage(msg);
-        };
+        }
         /**
         *検索、実行
         */
-        Client.prototype.run = function () {
+        run() {
             this.openUdp();
             var th = this;
             th.openSslPort(function () {
                 th.searchServer(th.udpInterval);
             });
-        };
+        }
         /**
         *TCP(SSL)受信時のイベント
         *@param {Buffer} msg 受信したバイナリ
         */
-        Client.prototype.tcpReceived = function (msg) {
+        tcpReceived(msg) {
             var that = this.this;
             try {
                 var txt = msg.toString("utf8", 0, msg.length);
@@ -579,12 +528,12 @@ var Child;
                     }
                     break;
             }
-        };
+        }
         /**
         *@param {string} name 関数名
         *@param {any[]} args 引数一覧
         */
-        Client.prototype.callFunction = function (name, args) {
+        callFunction(name, args) {
             if (name in this.registedFunc) {
                 //関数が存在するならば
                 var result;
@@ -603,49 +552,49 @@ var Child;
                 console.log("Call Error : Not Exist Function \"" + name + "\"");
             }
             return false;
-        };
+        }
         /**
         *メッセージを送信します
         *@param {any} msg 送信するオブジェクト(JSONに変換されます)
         */
-        Client.prototype.sendMessage = function (msg) {
+        sendMessage(msg) {
             this.sendText(JSON.stringify(msg));
-        };
+        }
         /**
         *テキストのメッセージを送信します
         *@param {string} text 送信するテキスト(JSONの形式に従ってください)
         */
-        Client.prototype.sendText = function (text) {
+        sendText(text) {
             this.socket.write(new Buffer(text, "utf8"));
-        };
+        }
         /**
         *SSLソケットでエラーが起こった時のイベント
         *@param {Error} err エラー
         */
-        Client.prototype.tlsError = function (err) {
+        tlsError(err) {
             console.log("Socket Error : " + err.name);
             console.log(err.message);
-        };
+        }
         /**
         *ソケットのクローズ時のイベント
         *@param {boolean} had_error エラーのせいでソケットが閉じられたかのフラグ
         */
-        Client.prototype.closed = function (had_error) {
+        closed(had_error) {
             var that = this.this;
             console.log("ReConnecting...");
             that.reconnect();
-        };
+        }
         /**
         *再接続を行う
         */
-        Client.prototype.reconnect = function () {
+        reconnect() {
             this.searchServer(this.udpInterval);
-        };
+        }
         /**
         *TCP(SSL)接続時のイベント
         *@param {net.Socket} socket 接続したソケット
         */
-        Client.prototype.tcpConnected = function (socket) {
+        tcpConnected(socket) {
             var that = this.this;
             that.serverAddr = socket.address();
             that.socket = socket;
@@ -659,12 +608,12 @@ var Child;
                 that.sendMessage(that.registerBuff);
                 that.registerBuff = undefined;
             }
-        };
+        }
         /**
         *UDPのポートを開ける
         *@return 成功したか(普通は大丈夫)
         */
-        Client.prototype.openUdp = function () {
+        openUdp() {
             for (var portCount = 0; portCount < this.portRange; portCount++) {
                 try {
                     var sender;
@@ -678,7 +627,7 @@ var Child;
                 return true;
             }
             return false;
-        };
+        }
         /**
         *サーバにudpメッセージ(GUID+クライアント名)を送る
         *searchServerによりスケジュールされます
@@ -686,25 +635,25 @@ var Child;
         *@param {Buffer} cipher 暗号化された送るもの
         *@param {number} interval 送る間隔
         */
-        Client.prototype.sendSearcher = function (client, cipher, interval) {
+        sendSearcher(client, cipher, interval) {
             var addr = client.udp.address();
             if (!client.serverFound) {
                 client.udp.send(cipher, 0, cipher.length, client.destPort, "255.255.255.255");
                 setTimeout(client.sendSearcher, interval, client, cipher, interval);
             }
-        };
+        }
         /**
         *ssl(サーバ)でエラーが起きた時のイベント
         *@param {Error} err エラー内容
         */
-        Client.prototype.sslError = function (err) {
+        sslError(err) {
             console.log('TlsServer Error : ' + err.name);
             console.log(err.message);
-        };
+        }
         /**
         *SSLのポートを開ける
         */
-        Client.prototype.openSslPort = function (callback) {
+        openSslPort(callback) {
             var k = this.privateKey.toPrivatePem();
             this.ssl = tls.createServer({ cert: this.cert, key: k });
             this.ssl.maxConnections = 1;
@@ -724,7 +673,7 @@ var Child;
             };
             th.ssl.on('error', openingSslPort);
             openingSslPort();
-        };
+        }
         /**
         *ポート番号の登録、受信時の処理の設定を行う
         */
@@ -732,31 +681,30 @@ var Child;
         *サーバの探査を開始する
         *@param {number} interval 送信する間隔
         */
-        Client.prototype.searchServer = function (interval) {
+        searchServer(interval) {
             this.serverFound = false;
             var plane = JSON.stringify(this.udpMessage);
             var cipher = this.encrypt(plane);
-            setTimeout(function (client) {
+            setTimeout((client) => {
                 client.udp.setBroadcast(true);
                 setTimeout(client.sendSearcher, 0, client, new Buffer(cipher), interval);
             }, 0, this);
-        };
+        }
         /**
         *base64の暗号をキーを利用して文字列に復号化する
         *@param {string} base64化された暗号文
         */
-        Client.prototype.decrypt = function (msg) {
+        decrypt(msg) {
             return this.privateKey.decrypt(msg, 'base64', 'utf8');
-        };
+        }
         /**
         *文字列を暗号化してBase64変換を行う
         *@param {string} 送信したい文字列
         */
-        Client.prototype.encrypt = function (msg) {
+        encrypt(msg) {
             return this.publicKey.encrypt(msg, 'utf8', 'base64');
-        };
-        return Client;
-    })();
+        }
+    }
     Child.Client = Client;
     /**
     *子機からのメッセージのタイプ
@@ -799,5 +747,5 @@ var Child;
     })(Child.argType || (Child.argType = {}));
     var argType = Child.argType;
     Client.init();
-})(Child = exports.Child || (exports.Child = {}));
+})(Child || (Child = {}));
 //# sourceMappingURL=extension.js.map

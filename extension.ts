@@ -967,7 +967,7 @@ export module Child {
         //引数
         args: argument[];
         //返り値
-        result: argType;
+        result: argument;
         //同期か
         sync: boolean
     }
@@ -999,7 +999,11 @@ export module Child {
         //説明
         desc: string;
         //型名
-        type: argType
+        type: argType;
+        //型の最小値
+        min?: number;
+        //型の最大値
+        max?: number;
     }
 
     Client.init();
