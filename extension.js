@@ -574,7 +574,17 @@ var Child;
                 var result;
                 var err;
                 try {
-                    result = this.registedFunc[name].func.apply(this, args);
+                    var argarr = [];
+                    var registedArg = this.registedFunc[name].args;
+                    for (var i = 0; i < registedArg.length; i++) {
+                        if (registedArg[i].arg in args) {
+                            argarr[i] = args[registedArg[i].arg];
+                        }
+                        else {
+                            argarr[i] = undefined;
+                        }
+                    }
+                    result = this.registedFunc[name].func.apply(this, argarr);
                 }
                 catch (ex) {
                     err = ex;
