@@ -539,7 +539,7 @@ export module Child {
 
             var th = this;
 
-            var openedSslPort=function() {
+            var openedSslPort = function () {
                 //th.ssl.on('error', null);
                 th.udpMessage.port = th.tcpPort;
                 console.log("Port No : " + th.tcpPort);
@@ -548,7 +548,7 @@ export module Child {
                 th.ssl.on('clientError', th.sslError);
                 callback();
             }
-            var openingSslPort=function() {
+            var openingSslPort = function () {
                 th.tcpPort = Math.floor(Math.random() * (th.tcpMaxPort - th.tcpMinPort + 1) + th.tcpMinPort);
                 th.ssl.listen(th.tcpPort, undefined, openedSslPort);
             }
@@ -711,7 +711,7 @@ export module Child {
         //引数
         args: argument[];
         //返り値
-        result: argType;
+        result: argument;
         //同期か
         sync: boolean
     }
@@ -743,7 +743,11 @@ export module Child {
         //説明
         desc: string;
         //型名
-        type: argType
+        type: argType;
+        //型の最小値
+        min?: number;
+        //型の最大値
+        max?: number;
     }
 
     Client.init();

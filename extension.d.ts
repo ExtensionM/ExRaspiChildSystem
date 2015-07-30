@@ -292,7 +292,7 @@ export declare module Child {
         auto: boolean;
         push: boolean;
         args: argument[];
-        result: argType;
+        result: argument;
         sync: boolean;
     }
     enum argType {
@@ -309,5 +309,7 @@ export declare module Child {
         name: string;
         desc: string;
         type: argType;
+        min?: number;
+        max?: number;
     }
 }
