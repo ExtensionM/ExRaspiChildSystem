@@ -405,13 +405,22 @@ export module Child {
         *@param {string} name 関数名
         *@param {any[]} args 引数一覧
         */
-        private callFunction(name: string, args: any[]): boolean {
+        private callFunction(name: string, args: { [key: string]: any }): boolean {
             if (name in this.registedFunc) {
                 //関数が存在するならば
                 var result;
                 var err: Error;
                 try {
-                    result = this.registedFunc[name].func.apply(this, args);
+                    var argarr = [];
+                    var registedArg = this.registedFunc[name].args;
+                    for (var i = 0; i < registedArg.length; i++) {
+                        if (registedArg[i].arg in args) {
+                            argarr[i] = args[registedArg[i].arg];
+                        } else {
+                            argarr[i] = undefined;
+                        }
+                    }
+                    result = this.registedFunc[name].func.apply(this, argarr);
                 } catch (ex) {
                     err = ex;
                     console.log("Call Error : " + err.message);
@@ -647,8 +656,8 @@ export module Child {
         value: {
             //関数の名前(固有)
             functionName: string;
-            //引数
-            args: any[];
+            //引数(登録時にarrとして設定した引数の名前をキーとする連想配列)
+            args: { [key: string]: any };
         };
     }
 
