@@ -60,7 +60,10 @@ var Child;
             var index = 0;
             for (i = 0; i < lens.length; i++) {
                 for (j = 0; j < lens[i]; j++) {
-                    output += this.bytes[index].toString(16);
+                    var numStr = this.bytes[index].toString(16);
+                    if (numStr, length < 2)
+                        numStr = '0' + numStr;
+                    output += numStr;
                     index++;
                 }
                 if (i + 1 != lens.length) {
