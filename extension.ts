@@ -96,7 +96,7 @@ export module Child {
             for (i = 0; i < lens.length; i++) {
                 for (j = 0; j < lens[i]; j++) {
                     var numStr = this.bytes[index].toString(16);
-                    if (numStr, length < 2) numStr = '0' + numStr;
+                    if (numStr.length < 2) numStr = '0' + numStr;
                     output += numStr;
                     index++;
                 }
