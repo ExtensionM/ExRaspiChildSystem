@@ -759,6 +759,8 @@ export module Child {
         min?: number;
         //型の最大値
         max?: number;
+        //設定できる数値の間隔
+        step?: number;
     }
 
     Client.init();
