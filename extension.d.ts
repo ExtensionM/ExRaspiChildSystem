@@ -402,5 +402,6 @@ export declare module Child {
         type: argType;
         min?: number;
         max?: number;
+        step?: number;
     }
 }
