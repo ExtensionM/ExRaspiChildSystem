@@ -151,7 +151,7 @@ export declare module Child {
         *@param {funcDef} def 関数に関する情報
         *@param {string} name 関数名(重複不可)
         */
-        regist(func: Function, define: funcDef, name?: string): void;
+        register(func: Function, define: funcDef, name?: string): void;
         /**
         *プッシュ通知を行う
         *@param {string} name 関数名
