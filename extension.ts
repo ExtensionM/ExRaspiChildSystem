@@ -530,7 +530,7 @@ export module Child {
         *@param {funcDef} def 関数に関する情報
         *@param {string} name 関数名(重複不可)
         */
-        public regist(func: Function, define: funcDef, name?: string) {
+        public register(func: Function, define: funcDef, name?: string) {
             if (define.sync === undefined) define.sync = true;
             if (name == undefined) {
                 if ((<any>func).name == undefined || (<any>func).name == "") {

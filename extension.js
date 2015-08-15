@@ -442,7 +442,7 @@ var Child;
         *@param {funcDef} def 関数に関する情報
         *@param {string} name 関数名(重複不可)
         */
-        Client.prototype.regist = function (func, define, name) {
+        Client.prototype.register = function (func, define, name) {
             if (define.sync === undefined)
                 define.sync = true;
             if (name == undefined) {
