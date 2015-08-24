@@ -84,6 +84,11 @@ export declare module Child {
         */
         constructor(Addr: number, dev?: string);
         /**
+        *コマンド番号とデータからArduinoの機能を呼び出す
+        */
+        callCommand(commandNo: number, datas: Buffer, returnLength?: number, callback?: (err: Error, buff: Buffer) => void): any;
+        callCommand(commandNo: number, datas: number[], returnLength?: number, callback?: (err: Error, buff: Buffer) => void): any;
+        /**
         *I2Cのバッファの中身を送信する
         *@param {(err:Error)=>void} callback エラー通知のコールバック
         */

@@ -123,17 +123,17 @@ export module Child {
         //出力命令
         Output = 2,
         //出力命令ex
-        OutputEx = 4,
+        OutputEx = 3,
         //PWM出力命令
-        PwmOut = 8,
+        PwmOut = 4,
         //サーボ出力命令
-        ServoOut = 16,
+        ServoOut = 5,
         //アナログ入力命令
-        AnalogIn = 32,
+        AnalogIn = 6,
         //入力命令
-        InputEx = 64,
+        InputEx = 7,
         //入力命令
-        Input = 128
+        Input = 8
     }
 
     /*
@@ -211,6 +211,31 @@ export module Child {
         }
 
         /**
+        *コマンド番号とデータからArduinoの機能を呼び出す
+        */
+        public callCommand(commandNo: number, datas: Buffer, returnLength?: number, callback?: (err: Error, buff: Buffer) => void);
+        public callCommand(commandNo: number, datas: number[], returnLength?: number, callback?: (err: Error, buff: Buffer) => void);
+        callCommand(commandNo: number, datas: any, returnLength?: number, callback?: (err: Error, buff: Buffer) => void) {
+            this.addToBuff(commandNo);
+            this.addToBuff(1);
+            if ((<NodeBuffer>datas).writeUInt8) {
+                datas.copy(this.buffer, this.bufferCount);
+                this.bufferCount += datas.length;
+            } else {
+                for (var i: number = 0; i < datas.length; i++) {
+                    this.addToBuff(datas[i]);
+                }
+            }
+            this.sendBuff((err: Error) => {
+                if (err) {
+                    if (callback) callback(err, undefined);
+                    return;
+                }
+                if (returnLength) this.getBytes(returnLength, callback);
+            });
+        }
+
+        /**
         *I2Cのバッファの中身を送信する
         *@param {(err:Error)=>void} callback エラー通知のコールバック
         */
@@ -245,11 +270,7 @@ export module Child {
         *@param {PinModes} mode 設定するモード
         */
         public pinMode(pinNo: number, mode: PinModes) {
-            this.addToBuff(Commands.Destination);
-            this.addToBuff(1);
-            this.addToBuff(mode);
-            this.addToBuff(pinNo);
-            this.sendBuff(function () { });
+            this.callCommand(Commands.Destination, [mode, pinNo]);
         }
 
         /**
@@ -294,11 +315,7 @@ export module Child {
         *@param {number} value 設定する値(0~255)
         */
         public analogWrite(pinNo: number, value: number) {
-            this.addToBuff(Commands.PwmOut);
-            this.addToBuff(1);
-            this.addToBuff(pinNo);
-            this.addToBuff(value);
-            this.sendBuff(function () { });
+            this.callCommand(Commands.PwmOut, [pinNo, value]);
         }
 
         /**
@@ -307,11 +324,7 @@ export module Child {
         *@param {number} value 設定する値(0~180)
         */
         public servoWrite(pinNo: number, angle: number) {
-            this.addToBuff(Commands.ServoOut);
-            this.addToBuff(1);
-            this.addToBuff(pinNo);
-            this.addToBuff(angle);
-            this.sendBuff(function () { });
+            this.callCommand(Commands.ServoOut, [pinNo, angle]);
         }
 
         /**
@@ -330,7 +343,7 @@ export module Child {
                 th.getBytes(3, function (err2, res) {
                     if (err2)
                         callback(pinNo, -1, err2);
-                    callback(res[0],(res[1] << 2) | res[3], err);
+                    callback(res[0], (res[1] << 2) | res[3], err);
                 });
             });
         }
@@ -351,7 +364,7 @@ export module Child {
                     th.getBytes(3, function (err2, res) {
                         if (err2)
                             callback1(pinNo, undefined, err2);
-                        callback1(pinNo,(res[0] & 0x80) ? true : false, err);
+                        callback1(pinNo, (res[0] & 0x80) ? true : false, err);
                     });
                 });
             } else {

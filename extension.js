@@ -89,17 +89,17 @@ var Child;
         //出力命令
         Commands[Commands["Output"] = 2] = "Output";
         //出力命令ex
-        Commands[Commands["OutputEx"] = 4] = "OutputEx";
+        Commands[Commands["OutputEx"] = 3] = "OutputEx";
         //PWM出力命令
-        Commands[Commands["PwmOut"] = 8] = "PwmOut";
+        Commands[Commands["PwmOut"] = 4] = "PwmOut";
         //サーボ出力命令
-        Commands[Commands["ServoOut"] = 16] = "ServoOut";
+        Commands[Commands["ServoOut"] = 5] = "ServoOut";
         //アナログ入力命令
-        Commands[Commands["AnalogIn"] = 32] = "AnalogIn";
+        Commands[Commands["AnalogIn"] = 6] = "AnalogIn";
         //入力命令
-        Commands[Commands["InputEx"] = 64] = "InputEx";
+        Commands[Commands["InputEx"] = 7] = "InputEx";
         //入力命令
-        Commands[Commands["Input"] = 128] = "Input";
+        Commands[Commands["Input"] = 8] = "Input";
     })(Commands || (Commands = {}));
     /*
     *ピンのモード
@@ -161,6 +161,29 @@ var Child;
                 throw new Error("アドレスが範囲外です");
             }
         }
+        IoExpander.prototype.callCommand = function (commandNo, datas, returnLength, callback) {
+            var _this = this;
+            this.addToBuff(commandNo);
+            this.addToBuff(1);
+            if (datas.writeUInt8) {
+                datas.copy(this.buffer, this.bufferCount);
+                this.bufferCount += datas.length;
+            }
+            else {
+                for (var i = 0; i < datas.length; i++) {
+                    this.addToBuff(datas[i]);
+                }
+            }
+            this.sendBuff(function (err) {
+                if (err) {
+                    if (callback)
+                        callback(err, undefined);
+                    return;
+                }
+                if (returnLength)
+                    _this.getBytes(returnLength, callback);
+            });
+        };
         /**
         *I2Cのバッファの中身を送信する
         *@param {(err:Error)=>void} callback エラー通知のコールバック
@@ -193,11 +216,7 @@ var Child;
         *@param {PinModes} mode 設定するモード
         */
         IoExpander.prototype.pinMode = function (pinNo, mode) {
-            this.addToBuff(Commands.Destination);
-            this.addToBuff(1);
-            this.addToBuff(mode);
-            this.addToBuff(pinNo);
-            this.sendBuff(function () { });
+            this.callCommand(Commands.Destination, [mode, pinNo]);
         };
         IoExpander.prototype.digitalWrite = function (obj, state) {
             if (state === undefined) {
@@ -229,11 +248,7 @@ var Child;
         *@param {number} value 設定する値(0~255)
         */
         IoExpander.prototype.analogWrite = function (pinNo, value) {
-            this.addToBuff(Commands.PwmOut);
-            this.addToBuff(1);
-            this.addToBuff(pinNo);
-            this.addToBuff(value);
-            this.sendBuff(function () { });
+            this.callCommand(Commands.PwmOut, [pinNo, value]);
         };
         /**
         *サーボモータの角度を設定する
@@ -241,11 +256,7 @@ var Child;
         *@param {number} value 設定する値(0~180)
         */
         IoExpander.prototype.servoWrite = function (pinNo, angle) {
-            this.addToBuff(Commands.ServoOut);
-            this.addToBuff(1);
-            this.addToBuff(pinNo);
-            this.addToBuff(angle);
-            this.sendBuff(function () { });
+            this.callCommand(Commands.ServoOut, [pinNo, angle]);
         };
         /**
         *アナログ値を読み取ります(0~1023)
