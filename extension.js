@@ -188,7 +188,7 @@ var Child;
         *@param {(err:Error)=>void} callback エラー通知のコールバック
         */
         IoExpander.prototype.sendBuff = function (callback) {
-            var b = new Buffer(this.bufferCount);
+            var b = new Buffer(this.bufferCount - 1);
             this.buffer.copy(b, 0, 1, this.bufferCount - 1);
             this.device.writeBytes(this.buffer[0], b, callback);
             this.bufferCount = 0;
@@ -218,8 +218,8 @@ var Child;
         IoExpander.getHumming = function (b4) {
             var b = IoExpander.getBit;
             b4 |= (b(b4, 0) ^ b(b4, 1) ^ b(b4, 2)) << 4;
-            b4 |= (b(b4, 1) ^ b(b4, 2) ^ b(b4, 3)) << 4;
-            b4 |= (b(b4, 0) ^ b(b4, 1) ^ b(b4, 3)) << 4;
+            b4 |= (b(b4, 1) ^ b(b4, 2) ^ b(b4, 3)) << 5;
+            b4 |= (b(b4, 0) ^ b(b4, 1) ^ b(b4, 3)) << 6;
             return b4;
         };
         /**

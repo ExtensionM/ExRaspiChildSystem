@@ -250,8 +250,8 @@ export module Child {
         *@param {(err:Error)=>void} callback エラー通知のコールバック
         */
         private sendBuff(callback: (err: Error) => void) {
-            var b: Buffer = new Buffer(this.bufferCount);
-            this.buffer.copy(b, 0, 1, this.bufferCount-1);
+            var b: Buffer = new Buffer(this.bufferCount - 1);
+            this.buffer.copy(b, 0, 1, this.bufferCount - 1);
             this.device.writeBytes(this.buffer[0], b, callback);
             this.bufferCount = 0;
         }
@@ -283,8 +283,8 @@ export module Child {
         private static getHumming(b4: number): number {
             var b = IoExpander.getBit;
             b4 |= (b(b4, 0) ^ b(b4, 1) ^ b(b4, 2)) << 4;
-            b4 |= (b(b4, 1) ^ b(b4, 2) ^ b(b4, 3)) << 4;
-            b4 |= (b(b4, 0) ^ b(b4, 1) ^ b(b4, 3)) << 4;
+            b4 |= (b(b4, 1) ^ b(b4, 2) ^ b(b4, 3)) << 5;
+            b4 |= (b(b4, 0) ^ b(b4, 1) ^ b(b4, 3)) << 6;
             return b4;
         }
 
