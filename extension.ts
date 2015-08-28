@@ -268,8 +268,8 @@ export module Child {
         *@param {(err:Error)=>void} callback エラー通知のコールバック
         */
         private sendBuff(callback: (err: Error) => void) {
-            var query: SendBuffer = { buffer: this.buffer, length: this.bufferCount, callback: callback };
-            this.sendBuffer[this.sendWaitingCount];
+            this.sendBuffer[this.sendWaitingCount] =
+            { buffer: this.buffer, length: this.bufferCount, callback: callback };
             this.sendWaitingCount++;
             this.bufferCount = 0;
 

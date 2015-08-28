@@ -197,8 +197,8 @@ var Child;
         */
         IoExpander.prototype.sendBuff = function (callback) {
             var _this = this;
-            var query = { buffer: this.buffer, length: this.bufferCount, callback: callback };
-            this.sendBuffer[this.sendWaitingCount];
+            this.sendBuffer[this.sendWaitingCount] =
+                { buffer: this.buffer, length: this.bufferCount, callback: callback };
             this.sendWaitingCount++;
             this.bufferCount = 0;
             var func = function () {
