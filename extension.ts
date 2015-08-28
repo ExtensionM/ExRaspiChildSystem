@@ -150,9 +150,19 @@ export module Child {
         Input = 7
     }
 
+    /*
+    *送信バッファ
+    */
+    interface SendBuffer {
+        //バッファ
+        buffer: Buffer;
+        //バッファ長
+        length: number;
+        //コールバック
+        callback: Function;
+    }
+
     export class IoExpander {
-
-
         /**
         *このインスタンスで扱うアドレス
         */
@@ -174,9 +184,17 @@ export module Child {
         */
         private bufferCount: number = 0;
         /**
-        *新しいエキスパンダーを作成します
-        *@param {number} Addr I2Cのアドレス
+  *送信待ち状況
+  */
+        private sendWaitingCount: number = 0;
+        /**
+        *バッファやコールバックを持っている配列
         */
+        private sendBuffer: SendBuffer[] = [];
+        /**
+              *新しいエキスパンダーを作成します
+              *@param {number} Addr I2Cのアドレス
+              */
         constructor(Addr: number, dev?: string) {
             if (0x07 < Addr && Addr < 0xf0) {
                 this.slaveAddr = Addr;
@@ -250,10 +268,27 @@ export module Child {
         *@param {(err:Error)=>void} callback エラー通知のコールバック
         */
         private sendBuff(callback: (err: Error) => void) {
-            var b: Buffer = new Buffer(this.bufferCount - 1);
-            this.buffer.copy(b, 0, 1);
-            this.device.writeBytes(this.buffer[0], b, callback);
+            var query: SendBuffer = { buffer: this.buffer, length: this.bufferCount, callback: callback };
+            this.sendBuffer[this.sendWaitingCount];
+            this.sendWaitingCount++;
             this.bufferCount = 0;
+
+            var func = (): void=> {
+                var send = this.sendBuffer[0];
+                var b: Buffer = new Buffer(send.length - 1);
+                send.buffer.copy(b, 0, 1);
+                this.device.writeBytes(send.buffer[0], b,
+                    (err: Error): void=> {
+                        send.callback(err);
+                        this.sendBuffer.shift();
+                        this.sendWaitingCount--;
+                        if (this.sendWaitingCount) func();
+                    });
+            };
+            if (this.sendWaitingCount == 1) {
+                //待機していない
+                func();
+            }
         }
 
         /**

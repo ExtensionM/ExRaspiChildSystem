@@ -79,9 +79,17 @@ export declare module Child {
         */
         private bufferCount;
         /**
-        *新しいエキスパンダーを作成します
-        *@param {number} Addr I2Cのアドレス
+  *送信待ち状況
+  */
+        private sendWaitingCount;
+        /**
+        *バッファやコールバックを持っている配列
         */
+        private sendBuffer;
+        /**
+              *新しいエキスパンダーを作成します
+              *@param {number} Addr I2Cのアドレス
+              */
         constructor(Addr: number, dev?: string);
         /**
         *コマンド番号とデータからArduinoの機能を呼び出す

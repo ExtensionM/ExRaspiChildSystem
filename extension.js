@@ -117,9 +117,9 @@ var Child;
     var PinModes = Child.PinModes;
     var IoExpander = (function () {
         /**
-        *新しいエキスパンダーを作成します
-        *@param {number} Addr I2Cのアドレス
-        */
+              *新しいエキスパンダーを作成します
+              *@param {number} Addr I2Cのアドレス
+              */
         function IoExpander(Addr, dev) {
             /**
             *送信バッファ
@@ -129,6 +129,14 @@ var Child;
             *バッファに書き込んだ数
             */
             this.bufferCount = 0;
+            /**
+      *送信待ち状況
+      */
+            this.sendWaitingCount = 0;
+            /**
+            *バッファやコールバックを持っている配列
+            */
+            this.sendBuffer = [];
             if (0x07 < Addr && Addr < 0xf0) {
                 this.slaveAddr = Addr;
                 if (dev == undefined) {
@@ -188,10 +196,27 @@ var Child;
         *@param {(err:Error)=>void} callback エラー通知のコールバック
         */
         IoExpander.prototype.sendBuff = function (callback) {
-            var b = new Buffer(this.bufferCount - 1);
-            this.buffer.copy(b, 0, 1);
-            this.device.writeBytes(this.buffer[0], b, callback);
+            var _this = this;
+            var query = { buffer: this.buffer, length: this.bufferCount, callback: callback };
+            this.sendBuffer[this.sendWaitingCount];
+            this.sendWaitingCount++;
             this.bufferCount = 0;
+            var func = function () {
+                var send = _this.sendBuffer[0];
+                var b = new Buffer(send.length - 1);
+                send.buffer.copy(b, 0, 1);
+                _this.device.writeBytes(send.buffer[0], b, function (err) {
+                    send.callback(err);
+                    _this.sendBuffer.shift();
+                    _this.sendWaitingCount--;
+                    if (_this.sendWaitingCount)
+                        func();
+                });
+            };
+            if (this.sendWaitingCount == 1) {
+                //待機していない
+                func();
+            }
         };
         /**
         *I2Cのデータを要求する
