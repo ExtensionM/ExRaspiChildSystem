@@ -189,7 +189,7 @@ var Child;
         */
         IoExpander.prototype.sendBuff = function (callback) {
             var b = new Buffer(this.bufferCount - 1);
-            this.buffer.copy(b, 0, 1, this.bufferCount - 1);
+            this.buffer.copy(b, 0, 1);
             this.device.writeBytes(this.buffer[0], b, callback);
             this.bufferCount = 0;
         };
