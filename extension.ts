@@ -212,12 +212,22 @@ export module Child {
 
         /**
         *コマンド番号とデータからArduinoの機能を呼び出す
+        *@param {number} commandNo Arduino側で設定したコマンドの番号
+        *@param {Buffer} datas 送信するデータ
+        *@param {number} returnLength 返信時に要求する長さ
+        *@param {(Error,Buffer)=>void} callback エラーや返信を受け取るコールバック関数
         */
         public callCommand(commandNo: number, datas: Buffer, returnLength?: number, callback?: (err: Error, buff: Buffer) => void);
+        /**
+        *コマンド番号とデータからArduinoの機能を呼び出す
+        *@param {number} commandNo Arduino側で設定したコマンドの番号
+        *@param {number[]} datas 送信するデータ
+        *@param {number} returnLength 返信時に要求する長さ
+        *@param {(Error,Buffer)=>void} callback エラーや返信を受け取るコールバック関数
+        */
         public callCommand(commandNo: number, datas: number[], returnLength?: number, callback?: (err: Error, buff: Buffer) => void);
         callCommand(commandNo: number, datas: any, returnLength?: number, callback?: (err: Error, buff: Buffer) => void) {
             this.addToBuff(commandNo);
-            this.addToBuff(1);
             if ((<NodeBuffer>datas).writeUInt8) {
                 datas.copy(this.buffer, this.bufferCount);
                 this.bufferCount += datas.length;
@@ -241,9 +251,8 @@ export module Child {
         */
         private sendBuff(callback: (err: Error) => void) {
             var b: Buffer = new Buffer(this.bufferCount);
-            var th = this;
-            this.buffer.copy(b, 0, 0, this.bufferCount);
-            this.device.writeBytes(0, b, callback);
+            this.buffer.copy(b, 0, 1, this.bufferCount-1);
+            this.device.writeBytes(this.buffer[0], b, callback);
             this.bufferCount = 0;
         }
 
@@ -257,10 +266,38 @@ export module Child {
         }
 
         /**
+        *特定のビットを取得する
+        *@param {number} value 値
+        *@param {number} bit どのビットを返すか
+        *@return 0 or 1
+        */
+        private static getBit(value: number, bit: number): number {
+            return 1 & (value >> bit);
+        }
+
+        /**
+        *4bitの値にハミング符号で3Bit付け足す
+        *@param {number} b4 元の4Bitの値
+        *@return 変換した値
+        */
+        private static getHumming(b4: number): number {
+            var b = IoExpander.getBit;
+            b4 |= (b(b4, 0) ^ b(b4, 1) ^ b(b4, 2)) << 4;
+            b4 |= (b(b4, 1) ^ b(b4, 2) ^ b(b4, 3)) << 4;
+            b4 |= (b(b4, 0) ^ b(b4, 1) ^ b(b4, 3)) << 4;
+            return b4;
+        }
+
+        /**
         *送信バッファの最後にバイト値を追加する
+        *@param {number} byte 送信する値
         */
         private addToBuff(byte: number) {
-            this.buffer.writeUInt8(byte, this.bufferCount);
+            var low: number = IoExpander.getHumming(byte & 0xf);
+            var high: number = IoExpander.getHumming(0xf & (byte >> 4));
+            this.buffer.writeUInt8(low, this.bufferCount);
+            this.bufferCount++;
+            this.buffer.writeUInt8(high, this.bufferCount);
             this.bufferCount++;
         }
 
@@ -288,7 +325,6 @@ export module Child {
         digitalWrite(obj: any, state?: boolean) {
             if (state === undefined) {
                 this.addToBuff(Commands.Output);
-                this.addToBuff(1);
                 var byte: number = 0;
                 var states: boolean[] = obj;
                 for (var i: number; i < 24; i++) {
@@ -302,7 +338,6 @@ export module Child {
                 }
             } else {
                 this.addToBuff(Commands.OutputEx);
-                this.addToBuff(1);
                 var pinNo: number = obj;
                 this.addToBuff(pinNo | (state ? 0x80 : 0));
             }
@@ -335,7 +370,6 @@ export module Child {
         public analogRead(pinNo: number, callback: (pinNo: number, value: number, Error: Error) => void): void {
             var th = this;
             this.addToBuff(Commands.AnalogIn);
-            this.addToBuff(1);
             this.addToBuff(pinNo);
             this.sendBuff(function (err) {
                 if (err)
@@ -357,7 +391,6 @@ export module Child {
                 var callback1: (pinNo: number, value: boolean, error: Error) => void = arg2;
                 this.addToBuff(Commands.InputEx);
                 this.addToBuff(pinNo);
-                this.addToBuff(1);
                 this.sendBuff(function (err) {
                     if (err)
                         callback1(pinNo, undefined, err);
@@ -370,7 +403,6 @@ export module Child {
             } else {
                 var callback2: (IDBCursorWithValue: Buffer, Error: Error) => void = arg1;
                 this.addToBuff(Commands.Input);
-                this.addToBuff(1);
                 this.sendBuff(function (err) {
                     if (err)
                         callback2(undefined, err);

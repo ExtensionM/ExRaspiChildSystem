@@ -164,7 +164,6 @@ var Child;
         IoExpander.prototype.callCommand = function (commandNo, datas, returnLength, callback) {
             var _this = this;
             this.addToBuff(commandNo);
-            this.addToBuff(1);
             if (datas.writeUInt8) {
                 datas.copy(this.buffer, this.bufferCount);
                 this.bufferCount += datas.length;
@@ -190,9 +189,8 @@ var Child;
         */
         IoExpander.prototype.sendBuff = function (callback) {
             var b = new Buffer(this.bufferCount);
-            var th = this;
-            this.buffer.copy(b, 0, 0, this.bufferCount);
-            this.device.writeBytes(0, b, callback);
+            this.buffer.copy(b, 0, 1, this.bufferCount - 1);
+            this.device.writeBytes(this.buffer[0], b, callback);
             this.bufferCount = 0;
         };
         /**
@@ -204,10 +202,36 @@ var Child;
             this.device.readBytes(0, length, callback);
         };
         /**
+        *特定のビットを取得する
+        *@param {number} value 値
+        *@param {number} bit どのビットを返すか
+        *@return 0 or 1
+        */
+        IoExpander.getBit = function (value, bit) {
+            return 1 & (value >> bit);
+        };
+        /**
+        *4bitの値にハミング符号で3Bit付け足す
+        *@param {number} b4 元の4Bitの値
+        *@return 変換した値
+        */
+        IoExpander.getHumming = function (b4) {
+            var b = IoExpander.getBit;
+            b4 |= (b(b4, 0) ^ b(b4, 1) ^ b(b4, 2)) << 4;
+            b4 |= (b(b4, 1) ^ b(b4, 2) ^ b(b4, 3)) << 4;
+            b4 |= (b(b4, 0) ^ b(b4, 1) ^ b(b4, 3)) << 4;
+            return b4;
+        };
+        /**
         *送信バッファの最後にバイト値を追加する
+        *@param {number} byte 送信する値
         */
         IoExpander.prototype.addToBuff = function (byte) {
-            this.buffer.writeUInt8(byte, this.bufferCount);
+            var low = IoExpander.getHumming(byte & 0xf);
+            var high = IoExpander.getHumming(0xf & (byte >> 4));
+            this.buffer.writeUInt8(low, this.bufferCount);
+            this.bufferCount++;
+            this.buffer.writeUInt8(high, this.bufferCount);
             this.bufferCount++;
         };
         /**
@@ -221,7 +245,6 @@ var Child;
         IoExpander.prototype.digitalWrite = function (obj, state) {
             if (state === undefined) {
                 this.addToBuff(Commands.Output);
-                this.addToBuff(1);
                 var byte = 0;
                 var states = obj;
                 for (var i; i < 24; i++) {
@@ -236,7 +259,6 @@ var Child;
             }
             else {
                 this.addToBuff(Commands.OutputEx);
-                this.addToBuff(1);
                 var pinNo = obj;
                 this.addToBuff(pinNo | (state ? 0x80 : 0));
             }
@@ -266,7 +288,6 @@ var Child;
         IoExpander.prototype.analogRead = function (pinNo, callback) {
             var th = this;
             this.addToBuff(Commands.AnalogIn);
-            this.addToBuff(1);
             this.addToBuff(pinNo);
             this.sendBuff(function (err) {
                 if (err)
@@ -285,7 +306,6 @@ var Child;
                 var callback1 = arg2;
                 this.addToBuff(Commands.InputEx);
                 this.addToBuff(pinNo);
-                this.addToBuff(1);
                 this.sendBuff(function (err) {
                     if (err)
                         callback1(pinNo, undefined, err);
@@ -299,7 +319,6 @@ var Child;
             else {
                 var callback2 = arg1;
                 this.addToBuff(Commands.Input);
-                this.addToBuff(1);
                 this.sendBuff(function (err) {
                     if (err)
                         callback2(undefined, err);

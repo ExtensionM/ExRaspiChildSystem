@@ -85,8 +85,19 @@ export declare module Child {
         constructor(Addr: number, dev?: string);
         /**
         *コマンド番号とデータからArduinoの機能を呼び出す
+        *@param {number} commandNo Arduino側で設定したコマンドの番号
+        *@param {Buffer} datas 送信するデータ
+        *@param {number} returnLength 返信時に要求する長さ
+        *@param {(Error,Buffer)=>void} callback エラーや返信を受け取るコールバック関数
         */
         callCommand(commandNo: number, datas: Buffer, returnLength?: number, callback?: (err: Error, buff: Buffer) => void): any;
+        /**
+        *コマンド番号とデータからArduinoの機能を呼び出す
+        *@param {number} commandNo Arduino側で設定したコマンドの番号
+        *@param {number[]} datas 送信するデータ
+        *@param {number} returnLength 返信時に要求する長さ
+        *@param {(Error,Buffer)=>void} callback エラーや返信を受け取るコールバック関数
+        */
         callCommand(commandNo: number, datas: number[], returnLength?: number, callback?: (err: Error, buff: Buffer) => void): any;
         /**
         *I2Cのバッファの中身を送信する
@@ -100,7 +111,21 @@ export declare module Child {
         */
         private getBytes(length, callback);
         /**
+        *特定のビットを取得する
+        *@param {number} value 値
+        *@param {number} bit どのビットを返すか
+        *@return 0 or 1
+        */
+        private static getBit(value, bit);
+        /**
+        *4bitの値にハミング符号で3Bit付け足す
+        *@param {number} b4 元の4Bitの値
+        *@return 変換した値
+        */
+        private static getHumming(b4);
+        /**
         *送信バッファの最後にバイト値を追加する
+        *@param {number} byte 送信する値
         */
         private addToBuff(byte);
         /**
