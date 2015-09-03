@@ -163,7 +163,6 @@ var Child;
                 if (this.devName == undefined) {
                     throw new Error("i2cデバイスが見つかりません");
                 }
-                this.device = new i2c(Addr, { device: this.devName });
             }
             else {
                 throw new Error("アドレスが範囲外です");
@@ -201,16 +200,21 @@ var Child;
                 { buffer: this.buffer, length: this.bufferCount, callback: callback };
             this.sendWaitingCount++;
             this.bufferCount = 0;
+            this.device = new i2c(this.slaveAddr, { device: this.devName });
             var func = function () {
                 var send = _this.sendBuffer[0];
                 var b = new Buffer(send.length - 1);
                 send.buffer.copy(b, 0, 1);
                 _this.device.writeBytes(send.buffer[0], b, function (err) {
-                    send.callback(err);
                     _this.sendBuffer.shift();
                     _this.sendWaitingCount--;
+                    send.callback(err);
                     if (_this.sendWaitingCount)
                         func();
+                    else {
+                        _this.device.close();
+                        _this.device = null;
+                    }
                 });
             };
             if (this.sendWaitingCount == 1) {
@@ -224,7 +228,13 @@ var Child;
         *@param {(err:Error,buff:Buffer)=>void} callback エラー通知のコールバック
         */
         IoExpander.prototype.getBytes = function (length, callback) {
-            this.device.readBytes(0, length, callback);
+            var _this = this;
+            this.device = new i2c(this.slaveAddr, { device: this.devName });
+            this.device.readBytes(0, length, function (err, buff) {
+                _this.device.close();
+                _this.device = null;
+                callback(err, buff);
+            });
         };
         /**
         *特定のビットを取得する
@@ -602,7 +612,7 @@ var Child;
         *@param {Buffer} msg 受信したバイナリ
         */
         Client.prototype.tcpReceived = function (msg) {
-            var that = this.this;
+            var that = this.this; //thisを復元
             try {
                 var txt = msg.toString("utf8", 0, msg.length);
                 var obj = JSON.parse(txt);
@@ -683,7 +693,7 @@ var Child;
         *@param {boolean} had_error エラーのせいでソケットが閉じられたかのフラグ
         */
         Client.prototype.closed = function (had_error) {
-            var that = this.this;
+            var that = this.this; //thisを復元
             console.log("ReConnecting...");
             that.reconnect();
         };
@@ -701,7 +711,7 @@ var Child;
             var that = this.this;
             that.serverAddr = socket.address();
             that.socket = socket;
-            that.socket.this = that;
+            that.socket.this = that; //ソケットにthisを退避
             that.socket.on('data', that.tcpReceived);
             that.socket.on('error', that.tlsError);
             that.socket.on('close', that.closed);
@@ -765,7 +775,7 @@ var Child;
                 //th.ssl.on('error', null);
                 th.udpMessage.port = th.tcpPort;
                 console.log("Port No : " + th.tcpPort);
-                (th.ssl).this = th;
+                (th.ssl).this = th; //thisを退避
                 th.ssl.on('secureConnection', th.tcpConnected);
                 th.ssl.on('clientError', th.sslError);
                 callback();

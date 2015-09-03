@@ -221,8 +221,6 @@ export module Child {
                 if (this.devName == undefined) {
                     throw new Error("i2cデバイスが見つかりません");
                 }
-                this.device = new i2c(Addr, { device: this.devName });
-
             } else {
                 throw new Error("アドレスが範囲外です");
             }
@@ -272,17 +270,21 @@ export module Child {
             { buffer: this.buffer, length: this.bufferCount, callback: callback };
             this.sendWaitingCount++;
             this.bufferCount = 0;
-
+            this.device = new i2c(this.slaveAddr, { device: this.devName });
             var func = (): void=> {
                 var send = this.sendBuffer[0];
                 var b: Buffer = new Buffer(send.length - 1);
                 send.buffer.copy(b, 0, 1);
                 this.device.writeBytes(send.buffer[0], b,
                     (err: Error): void=> {
-                        send.callback(err);
                         this.sendBuffer.shift();
                         this.sendWaitingCount--;
+                        send.callback(err);
                         if (this.sendWaitingCount) func();
+                        else {
+                            this.device.close();
+                            this.device = null;
+                        }
                     });
             };
             if (this.sendWaitingCount == 1) {
@@ -297,7 +299,12 @@ export module Child {
         *@param {(err:Error,buff:Buffer)=>void} callback エラー通知のコールバック
         */
         private getBytes(length: number, callback: (err: Error, buff: Buffer) => void) {
-            this.device.readBytes(0, length, callback);
+            this.device = new i2c(this.slaveAddr, { device: this.devName });
+            this.device.readBytes(0, length, (err: Error, buff: Buffer) => {
+                this.device.close();
+                this.device = null;
+                callback(err, buff);
+            });
         }
 
         /**
@@ -719,7 +726,7 @@ export module Child {
         *@param {Buffer} msg 受信したバイナリ
         */
         private tcpReceived(msg: Buffer): void {
-            var that: Client = (<any>this).this;
+            var that: Client = (<any>this).this;//thisを復元
             try {
                 var txt = msg.toString("utf8", 0, msg.length);
                 var obj: message = JSON.parse(txt);
@@ -799,7 +806,7 @@ export module Child {
         *@param {boolean} had_error エラーのせいでソケットが閉じられたかのフラグ
         */
         private closed(had_error: boolean) {
-            var that: Client = (<any>this).this;
+            var that: Client = (<any>this).this;//thisを復元
             console.log("ReConnecting...");
             that.reconnect();
         }
@@ -820,7 +827,7 @@ export module Child {
 
             that.serverAddr = socket.address();
             that.socket = socket;
-            (<any>that.socket).this = that;
+            (<any>that.socket).this = that;//ソケットにthisを退避
             that.socket.on('data', that.tcpReceived);
             that.socket.on('error', that.tlsError);
             that.socket.on('close', that.closed);
@@ -890,7 +897,7 @@ export module Child {
                 //th.ssl.on('error', null);
                 th.udpMessage.port = th.tcpPort;
                 console.log("Port No : " + th.tcpPort);
-                (<any>(th.ssl)).this = th;
+                (<any>(th.ssl)).this = th;//thisを退避
                 th.ssl.on('secureConnection', th.tcpConnected);
                 th.ssl.on('clientError', th.sslError);
                 callback();
@@ -1102,4 +1109,3 @@ export module Child {
     Client.init();
 
 }
-
