@@ -690,7 +690,10 @@ var Child;
                     _this.sendBuffLen--;
                     _this.sendBuff.shift();
                     if (_this.sendBuffLen) {
-                        _this.socket.write(_this.sendBuff[0], sendit);
+						try {
+                        	_this.socket.write(_this.sendBuff[0], sendit);
+						} catch(ex) {
+						}
                     }
                 };
                 this.socket.write(buff, sendit);
