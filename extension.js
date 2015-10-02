@@ -410,8 +410,10 @@ var Child;
             }
             else {
                 var sendit = function () {
-                    _this.sendBuffLen--;
-                    _this.sendBuff.shift();
+                    if (_this.sendBuff) {
+                        _this.sendBuffLen--;
+                        _this.sendBuff.shift();
+                    }
                     if (_this.sendBuffLen) {
                         _this.socket.write(_this.sendBuff[0], sendit);
                     }
