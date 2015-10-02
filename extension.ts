@@ -803,8 +803,10 @@ export module Child {
                 que();
             } else {
                 var sendit = () => {
-                    this.sendBuffLen--;
-                    this.sendBuff.shift();
+                    if (this.sendBuff) {
+                        this.sendBuffLen--;
+                        this.sendBuff.shift();
+                    }
                     if (this.sendBuffLen) {
                         this.socket.write(this.sendBuff[0], sendit);
                     }
