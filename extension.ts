@@ -467,7 +467,7 @@ export module Child {
                 que();
             } else {
                 var sendit = () => {
-                    if (this.sendBuff) {
+                    if (this.sendBuffLen) {
                         this.sendBuffLen--;
                         this.sendBuff.shift();
                     }

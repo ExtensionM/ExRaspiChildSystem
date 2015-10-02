@@ -410,7 +410,7 @@ var Child;
             }
             else {
                 var sendit = function () {
-                    if (_this.sendBuff) {
+                    if (_this.sendBuffLen) {
                         _this.sendBuffLen--;
                         _this.sendBuff.shift();
                     }
