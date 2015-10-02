@@ -150,6 +150,17 @@ export module Child {
         public get udpInterval(): number { return 2500; }
 
         private _clientType: string = "Client";
+
+        /**
+        *TLSの送信バッファ
+        */
+        public sendBuff: Buffer[] = [];
+
+        /**
+        *受信バッファにキャッシュされた長さ
+        */
+        public sendBuffLen: number = 0;
+
         /**
         *子機の機能の種類
         */
@@ -286,7 +297,7 @@ export module Child {
                 //関数名が被ってる→エラー
                 throw new Error("Already Exist '" + name + "'");
             }
-            var reg: registedFunc = <any> define;
+            var reg: registedFunc = <any>define;
             reg.func = func;
             //登録
             this.registedFunc[name] = reg;
@@ -447,7 +458,23 @@ export module Child {
         *@param {string} text 送信するテキスト(JSONの形式に従ってください)
         */
         private sendText(text: string) {
-            this.socket.write(new Buffer(text, "utf8"));
+            var buff = new Buffer(text, "utf8")
+            if (this.sendBuffLen) {
+                var que = () => {
+                    this.sendBuff[this.sendBuffLen] = buff;
+                    this.sendBuffLen++;
+                };
+                que();
+            } else {
+                var sendit = () => {
+                    this.sendBuffLen--;
+                    this.sendBuff.shift();
+                    if (this.sendBuffLen) {
+                        this.socket.write(this.sendBuff[0], sendit);
+                    }
+                };
+                this.socket.write(buff, sendit);
+            }
         }
 
         /**

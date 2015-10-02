@@ -80,6 +80,14 @@ export declare module Child {
         udpInterval: number;
         private _clientType;
         /**
+        *TLSの送信バッファ
+        */
+        sendBuff: Buffer[];
+        /**
+        *受信バッファにキャッシュされた長さ
+        */
+        sendBuffLen: number;
+        /**
         *子機の機能の種類
         */
         /**

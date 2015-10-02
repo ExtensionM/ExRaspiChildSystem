@@ -96,6 +96,14 @@ var Child;
         function Client(privateKey, publicKey, cert, setting, clientType) {
             this._clientType = "Client";
             /**
+            *TLSの送信バッファ
+            */
+            this.sendBuff = [];
+            /**
+            *受信バッファにキャッシュされた長さ
+            */
+            this.sendBuffLen = 0;
+            /**
             *サーバの探索が終わっているか否か
             *これがtrueになるまでUDPの送信を続ける
             */
@@ -391,7 +399,25 @@ var Child;
         *@param {string} text 送信するテキスト(JSONの形式に従ってください)
         */
         Client.prototype.sendText = function (text) {
-            this.socket.write(new Buffer(text, "utf8"));
+            var _this = this;
+            var buff = new Buffer(text, "utf8");
+            if (this.sendBuffLen) {
+                var que = function () {
+                    _this.sendBuff[_this.sendBuffLen] = buff;
+                    _this.sendBuffLen++;
+                };
+                que();
+            }
+            else {
+                var sendit = function () {
+                    _this.sendBuffLen--;
+                    _this.sendBuff.shift();
+                    if (_this.sendBuffLen) {
+                        _this.socket.write(_this.sendBuff[0], sendit);
+                    }
+                };
+                this.socket.write(buff, sendit);
+            }
         };
         /**
         *SSLソケットでエラーが起こった時のイベント
