@@ -342,17 +342,18 @@ export module Child {
         *関数の返り値を返す(自動で呼び出されます)
         *@param {string} name 関数名
         *@param {any} result 送りたい返り値
+        *@param {number} callId 呼び出された時の番号
         *@param {boolean} cancelled キャンセルされたか
         *@param {Error} error エラーの内容
         */
-        private sendResult(name: string, result: any, cancelled?: boolean, error?: Error) {
+        private sendResult(name: string, result: any, callId: number, cancelled?: boolean, error?: Error) {
             var msg: resultMessage = {
                 dest: destination.server,
                 id: this.udpMessage.guid,
                 name: this.udpMessage.name,
                 type: msgType.result,
                 value: {
-                    functionName: name, result: result,
+                    functionName: name, result: result, client: callId,
                     cancelled: cancelled || (error != undefined),
                     hasError: error != undefined, error: error
                 }
@@ -366,6 +367,7 @@ export module Child {
         *@param {any} result 送りたい返り値
         */
         public sendResultAsync(name: string, result: any) {
+            
             var msg: message = {
                 dest: destination.server,
                 id: this.udpMessage.guid,
@@ -408,17 +410,18 @@ export module Child {
                     //親機からの関数呼び出し命令
                     var cMsg: callMessage = <any>obj;
                     if (cMsg.value.functionName != undefined) {
-                        that.callFunction(cMsg.value.functionName, cMsg.value.args);
+                        that.callFunction(cMsg);
                     }
                     break;
             }
         }
 
         /**
-        *@param {string} name 関数名
-        *@param {any[]} args 引数一覧
+        *@param {callMessage} cMsg 関数呼び出し時の情報
         */
-        private callFunction(name: string, args: { [key: string]: any }): boolean {
+        private callFunction(cMsg: callMessage): boolean {
+            var name: string = cMsg.value.functionName;
+            var args: { [key: string]: any } = cMsg.value.args;
             if (name in this.registedFunc) {
                 //関数が存在するならば
                 var result;
@@ -438,7 +441,7 @@ export module Child {
                     err = ex;
                     console.log("Call Error : " + err.message);
                 }
-                this.sendResult(name, result, err != undefined, err);
+                this.sendResult(name, result, cMsg.value.client, err != undefined, err);
                 return true;
             } else {
                 console.log("Call Error : Not Exist Function \"" + name + "\"");
@@ -689,6 +692,8 @@ export module Child {
             functionName: string;
             //引数(登録時にarrとして設定した引数の名前をキーとする連想配列)
             args: { [key: string]: any };
+            //呼び出しid
+            client: number;
         };
     }
 
@@ -706,6 +711,8 @@ export module Child {
             error: Error;
             //結果
             result: any;
+            //呼び出し時のId
+            client: number;
         }
     }
 

@@ -283,17 +283,18 @@ var Child;
         *関数の返り値を返す(自動で呼び出されます)
         *@param {string} name 関数名
         *@param {any} result 送りたい返り値
+        *@param {number} callId 呼び出された時の番号
         *@param {boolean} cancelled キャンセルされたか
         *@param {Error} error エラーの内容
         */
-        Client.prototype.sendResult = function (name, result, cancelled, error) {
+        Client.prototype.sendResult = function (name, result, callId, cancelled, error) {
             var msg = {
                 dest: destination.server,
                 id: this.udpMessage.guid,
                 name: this.udpMessage.name,
                 type: msgType.result,
                 value: {
-                    functionName: name, result: result,
+                    functionName: name, result: result, client: callId,
                     cancelled: cancelled || (error != undefined),
                     hasError: error != undefined, error: error
                 }
@@ -348,16 +349,17 @@ var Child;
                     //親機からの関数呼び出し命令
                     var cMsg = obj;
                     if (cMsg.value.functionName != undefined) {
-                        that.callFunction(cMsg.value.functionName, cMsg.value.args);
+                        that.callFunction(cMsg);
                     }
                     break;
             }
         };
         /**
-        *@param {string} name 関数名
-        *@param {any[]} args 引数一覧
+        *@param {callMessage} cMsg 関数呼び出し時の情報
         */
-        Client.prototype.callFunction = function (name, args) {
+        Client.prototype.callFunction = function (cMsg) {
+            var name = cMsg.value.functionName;
+            var args = cMsg.value.args;
             if (name in this.registedFunc) {
                 //関数が存在するならば
                 var result;
@@ -379,7 +381,7 @@ var Child;
                     err = ex;
                     console.log("Call Error : " + err.message);
                 }
-                this.sendResult(name, result, err != undefined, err);
+                this.sendResult(name, result, cMsg.value.client, err != undefined, err);
                 return true;
             }
             else {
