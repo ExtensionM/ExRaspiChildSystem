@@ -326,14 +326,15 @@ export module Child {
         *プッシュ通知を行う
         *@param {string} name 関数名
         *@param {any} value 送る値
+        *@param {number} callId 呼び出された時の番号
         */
-        public push(name: string, value: any) {
+        public push(name: string, value: any, callId: number) {
             var obj: pushMessage = {
                 dest: destination.server,
                 id: this.udpMessage.guid,
                 name: this.udpMessage.name,
                 type: msgType.message,
-                value: { function: name, value: value }
+                value: { function: name, value: value, client: callId }
             };
             this.sendMessage(obj);
         }
@@ -365,9 +366,10 @@ export module Child {
         *関数の返り値を返す(非同期用)
         *@param {string} name 関数名
         *@param {any} result 送りたい返り値
+        *@param {number} callId 呼び出された時の番号
         */
-        public sendResultAsync(name: string, result: any) {
-            
+        public sendResultAsync(name: string, result: any, callId: number) {
+
             var msg: message = {
                 dest: destination.server,
                 id: this.udpMessage.guid,
@@ -375,7 +377,8 @@ export module Child {
                 type: msgType.message,
                 value: {
                     functionName: name,
-                    value: result
+                    value: result,
+                    client: callId
                 }
             };
             this.sendMessage(msg);
@@ -429,13 +432,15 @@ export module Child {
                 try {
                     var argarr = [];
                     var registedArg = this.registedFunc[name].args;
-                    for (var i = 0; i < registedArg.length; i++) {
+                    var i: number;
+                    for (i = 0; i < registedArg.length; i++) {
                         if (registedArg[i].arg in args) {
                             argarr[i] = args[registedArg[i].arg];
                         } else {
                             argarr[i] = undefined;
                         }
                     }
+                    argarr[i] = cMsg.value.client;
                     result = this.registedFunc[name].func.apply(this, argarr);
                 } catch (ex) {
                     err = ex;
@@ -673,6 +678,8 @@ export module Child {
             function: string;
             //返り値
             value: any;
+            //ユーザーの端末の判別用id
+            client: number
         }
     }
 

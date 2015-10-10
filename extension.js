@@ -268,14 +268,15 @@ var Child;
         *プッシュ通知を行う
         *@param {string} name 関数名
         *@param {any} value 送る値
+        *@param {number} callId 呼び出された時の番号
         */
-        Client.prototype.push = function (name, value) {
+        Client.prototype.push = function (name, value, callId) {
             var obj = {
                 dest: destination.server,
                 id: this.udpMessage.guid,
                 name: this.udpMessage.name,
                 type: msgType.message,
-                value: { function: name, value: value }
+                value: { function: name, value: value, client: callId }
             };
             this.sendMessage(obj);
         };
@@ -305,8 +306,9 @@ var Child;
         *関数の返り値を返す(非同期用)
         *@param {string} name 関数名
         *@param {any} result 送りたい返り値
+        *@param {number} callId 呼び出された時の番号
         */
-        Client.prototype.sendResultAsync = function (name, result) {
+        Client.prototype.sendResultAsync = function (name, result, callId) {
             var msg = {
                 dest: destination.server,
                 id: this.udpMessage.guid,
@@ -314,7 +316,8 @@ var Child;
                 type: msgType.message,
                 value: {
                     functionName: name,
-                    value: result
+                    value: result,
+                    client: callId
                 }
             };
             this.sendMessage(msg);
@@ -367,7 +370,8 @@ var Child;
                 try {
                     var argarr = [];
                     var registedArg = this.registedFunc[name].args;
-                    for (var i = 0; i < registedArg.length; i++) {
+                    var i;
+                    for (i = 0; i < registedArg.length; i++) {
                         if (registedArg[i].arg in args) {
                             argarr[i] = args[registedArg[i].arg];
                         }
@@ -375,6 +379,7 @@ var Child;
                             argarr[i] = undefined;
                         }
                     }
+                    argarr[i] = cMsg.value.client;
                     result = this.registedFunc[name].func.apply(this, argarr);
                 }
                 catch (ex) {
