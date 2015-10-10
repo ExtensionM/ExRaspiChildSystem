@@ -293,22 +293,25 @@ export declare module Child {
         *プッシュ通知を行う
         *@param {string} name 関数名
         *@param {any} value 送る値
+        *@param {number} callId 呼び出された時の番号
         */
-        push(name: string, value: any): void;
+        push(name: string, value: any, callId: number): void;
         /**
         *関数の返り値を返す(自動で呼び出されます)
         *@param {string} name 関数名
         *@param {any} result 送りたい返り値
+        *@param {number} callId 呼び出された時の番号
         *@param {boolean} cancelled キャンセルされたか
         *@param {Error} error エラーの内容
         */
-        private sendResult(name, result, cancelled?, error?);
+        private sendResult(name, result, callId, cancelled?, error?);
         /**
         *関数の返り値を返す(非同期用)
         *@param {string} name 関数名
         *@param {any} result 送りたい返り値
+        *@param {number} callId 呼び出された時の番号
         */
-        sendResultAsync(name: string, result: any): void;
+        sendResultAsync(name: string, result: any, callId: number): void;
         /**
         *検索、実行
         */
@@ -319,10 +322,9 @@ export declare module Child {
         */
         private tcpReceived(msg);
         /**
-        *@param {string} name 関数名
-        *@param {any[]} args 引数一覧
+        *@param {callMessage} cMsg 関数呼び出し時の情報
         */
-        private callFunction(name, args);
+        private callFunction(cMsg);
         /**
         *メッセージを送信します
         *@param {any} msg 送信するオブジェクト(JSONに変換されます)

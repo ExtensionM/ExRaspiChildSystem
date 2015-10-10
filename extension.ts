@@ -662,14 +662,15 @@ export module Child {
         *プッシュ通知を行う
         *@param {string} name 関数名
         *@param {any} value 送る値
+        *@param {number} callId 呼び出された時の番号
         */
-        public push(name: string, value: any) {
+        public push(name: string, value: any, callId: number) {
             var obj: pushMessage = {
                 dest: destination.server,
                 id: this.udpMessage.guid,
                 name: this.udpMessage.name,
                 type: msgType.message,
-                value: { function: name, value: value }
+                value: { function: name, value: value, client: callId }
             };
             this.sendMessage(obj);
         }
@@ -678,17 +679,18 @@ export module Child {
         *関数の返り値を返す(自動で呼び出されます)
         *@param {string} name 関数名
         *@param {any} result 送りたい返り値
+        *@param {number} callId 呼び出された時の番号
         *@param {boolean} cancelled キャンセルされたか
         *@param {Error} error エラーの内容
         */
-        private sendResult(name: string, result: any, cancelled?: boolean, error?: Error) {
+        private sendResult(name: string, result: any, callId: number, cancelled?: boolean, error?: Error) {
             var msg: resultMessage = {
                 dest: destination.server,
                 id: this.udpMessage.guid,
                 name: this.udpMessage.name,
                 type: msgType.result,
                 value: {
-                    functionName: name, result: result,
+                    functionName: name, result: result, client: callId,
                     cancelled: cancelled || (error != undefined),
                     hasError: error != undefined, error: error
                 }
@@ -700,8 +702,10 @@ export module Child {
         *関数の返り値を返す(非同期用)
         *@param {string} name 関数名
         *@param {any} result 送りたい返り値
+        *@param {number} callId 呼び出された時の番号
         */
-        public sendResultAsync(name: string, result: any) {
+        public sendResultAsync(name: string, result: any, callId: number) {
+
             var msg: message = {
                 dest: destination.server,
                 id: this.udpMessage.guid,
@@ -709,7 +713,8 @@ export module Child {
                 type: msgType.message,
                 value: {
                     functionName: name,
-                    value: result
+                    value: result,
+                    client: callId
                 }
             };
             this.sendMessage(msg);
@@ -744,17 +749,18 @@ export module Child {
                     //親機からの関数呼び出し命令
                     var cMsg: callMessage = <any>obj;
                     if (cMsg.value.functionName != undefined) {
-                        that.callFunction(cMsg.value.functionName, cMsg.value.args);
+                        that.callFunction(cMsg);
                     }
                     break;
             }
         }
 
         /**
-        *@param {string} name 関数名
-        *@param {any[]} args 引数一覧
+        *@param {callMessage} cMsg 関数呼び出し時の情報
         */
-        private callFunction(name: string, args: { [key: string]: any }): boolean {
+        private callFunction(cMsg: callMessage): boolean {
+            var name: string = cMsg.value.functionName;
+            var args: { [key: string]: any } = cMsg.value.args;
             if (name in this.registedFunc) {
                 //関数が存在するならば
                 var result;
@@ -762,19 +768,21 @@ export module Child {
                 try {
                     var argarr = [];
                     var registedArg = this.registedFunc[name].args;
-                    for (var i = 0; i < registedArg.length; i++) {
+                    var i: number;
+                    for (i = 0; i < registedArg.length; i++) {
                         if (registedArg[i].arg in args) {
                             argarr[i] = args[registedArg[i].arg];
                         } else {
                             argarr[i] = undefined;
                         }
                     }
+                    argarr[i] = cMsg.value.client;
                     result = this.registedFunc[name].func.apply(this, argarr);
                 } catch (ex) {
                     err = ex;
                     console.log("Call Error : " + err.message);
                 }
-                this.sendResult(name, result, err != undefined, err);
+                this.sendResult(name, result, cMsg.value.client, err != undefined, err);
                 return true;
             } else {
                 console.log("Call Error : Not Exist Function \"" + name + "\"");
@@ -1006,6 +1014,8 @@ export module Child {
             function: string;
             //返り値
             value: any;
+            //ユーザーの端末の判別用id
+            client: number
         }
     }
 
@@ -1025,6 +1035,8 @@ export module Child {
             functionName: string;
             //引数(登録時にarrとして設定した引数の名前をキーとする連想配列)
             args: { [key: string]: any };
+            //呼び出しid
+            client: number;
         };
     }
 
@@ -1042,6 +1054,8 @@ export module Child {
             error: Error;
             //結果
             result: any;
+            //呼び出し時のId
+            client: number;
         }
     }
 

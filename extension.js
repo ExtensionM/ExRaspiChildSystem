@@ -545,14 +545,15 @@ var Child;
         *プッシュ通知を行う
         *@param {string} name 関数名
         *@param {any} value 送る値
+        *@param {number} callId 呼び出された時の番号
         */
-        Client.prototype.push = function (name, value) {
+        Client.prototype.push = function (name, value, callId) {
             var obj = {
                 dest: destination.server,
                 id: this.udpMessage.guid,
                 name: this.udpMessage.name,
                 type: msgType.message,
-                value: { function: name, value: value }
+                value: { function: name, value: value, client: callId }
             };
             this.sendMessage(obj);
         };
@@ -560,17 +561,18 @@ var Child;
         *関数の返り値を返す(自動で呼び出されます)
         *@param {string} name 関数名
         *@param {any} result 送りたい返り値
+        *@param {number} callId 呼び出された時の番号
         *@param {boolean} cancelled キャンセルされたか
         *@param {Error} error エラーの内容
         */
-        Client.prototype.sendResult = function (name, result, cancelled, error) {
+        Client.prototype.sendResult = function (name, result, callId, cancelled, error) {
             var msg = {
                 dest: destination.server,
                 id: this.udpMessage.guid,
                 name: this.udpMessage.name,
                 type: msgType.result,
                 value: {
-                    functionName: name, result: result,
+                    functionName: name, result: result, client: callId,
                     cancelled: cancelled || (error != undefined),
                     hasError: error != undefined, error: error
                 }
@@ -581,8 +583,9 @@ var Child;
         *関数の返り値を返す(非同期用)
         *@param {string} name 関数名
         *@param {any} result 送りたい返り値
+        *@param {number} callId 呼び出された時の番号
         */
-        Client.prototype.sendResultAsync = function (name, result) {
+        Client.prototype.sendResultAsync = function (name, result, callId) {
             var msg = {
                 dest: destination.server,
                 id: this.udpMessage.guid,
@@ -590,7 +593,8 @@ var Child;
                 type: msgType.message,
                 value: {
                     functionName: name,
-                    value: result
+                    value: result,
+                    client: callId
                 }
             };
             this.sendMessage(msg);
@@ -625,16 +629,17 @@ var Child;
                     //親機からの関数呼び出し命令
                     var cMsg = obj;
                     if (cMsg.value.functionName != undefined) {
-                        that.callFunction(cMsg.value.functionName, cMsg.value.args);
+                        that.callFunction(cMsg);
                     }
                     break;
             }
         };
         /**
-        *@param {string} name 関数名
-        *@param {any[]} args 引数一覧
+        *@param {callMessage} cMsg 関数呼び出し時の情報
         */
-        Client.prototype.callFunction = function (name, args) {
+        Client.prototype.callFunction = function (cMsg) {
+            var name = cMsg.value.functionName;
+            var args = cMsg.value.args;
             if (name in this.registedFunc) {
                 //関数が存在するならば
                 var result;
@@ -642,7 +647,8 @@ var Child;
                 try {
                     var argarr = [];
                     var registedArg = this.registedFunc[name].args;
-                    for (var i = 0; i < registedArg.length; i++) {
+                    var i;
+                    for (i = 0; i < registedArg.length; i++) {
                         if (registedArg[i].arg in args) {
                             argarr[i] = args[registedArg[i].arg];
                         }
@@ -650,13 +656,14 @@ var Child;
                             argarr[i] = undefined;
                         }
                     }
+                    argarr[i] = cMsg.value.client;
                     result = this.registedFunc[name].func.apply(this, argarr);
                 }
                 catch (ex) {
                     err = ex;
                     console.log("Call Error : " + err.message);
                 }
-                this.sendResult(name, result, err != undefined, err);
+                this.sendResult(name, result, cMsg.value.client, err != undefined, err);
                 return true;
             }
             else {
